@@ -77,7 +77,8 @@ Keystore·생체·SQLCipher는 실제 구현을 쓴다 — **모킹하면 검증
 | ID | 항목 | 확인 방법 |
 |----|------|-----------|
 | TST-12 | 릴리스 빌드에 로그 없음 | R8 매핑·bytecode 확인 또는 `Log` 호출 제거 규칙 검증. 비밀 보유 타입의 `toString()` 마스킹 단위 테스트 |
-| TST-13 | 매니페스트 | 머지된 매니페스트에서 권한 0개(`INTERNET` 포함), `allowBackup=false`, `MainActivity` 외 `exported=false`, `dataExtractionRules` 적용 확인 |
+| TST-13 | 매니페스트 | **머지된** 매니페스트에서 확인한다 (소스 매니페스트로는 부족하다 — 추이 의존성이 컴포넌트를 주입한다). 권한 0개(`INTERNET` 포함), `allowBackup=false`, `MainActivity` 외 `exported=false`, `dataExtractionRules` 적용 |
+| TST-13 | 허용된 예외 2건 | ① `<자기 패키지>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` — `androidx.core` 가 자동 선언하는 `signature` 보호 수준 권한이며 런타임 권한이 아니다. NFR-03 위반이 아니다. ② `androidx.startup.InitializationProvider` — `exported=false` 이므로 SEC-08 위반이 아니다. **이 둘 외의 항목이 보이면 회귀다** |
 | TST-13 | 의존성 | 네트워크 라이브러리가 추이적으로 들어오지 않았는지 의존성 트리 확인 |
 
 ## 수기 체크리스트 (릴리스 전)

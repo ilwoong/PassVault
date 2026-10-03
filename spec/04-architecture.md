@@ -111,3 +111,18 @@ ui  →  data  →  security
 | 권한 | **선언 없음.** `INTERNET` 포함 (NFR-03) |
 | 릴리스 | R8 축소·난독화 활성, `debuggable=false`, 로그 제거 |
 | 디버그 | `applicationIdSuffix = ".debug"` 로 릴리스 금고와 공존 |
+
+### ARC-08 알려진 빌드 체인 제약 (상환 대상)
+
+AGP 9 는 Kotlin 내장 지원이 기본값이다. 외부 `org.jetbrains.kotlin.android` 플러그인을
+쓰기 위해 `gradle.properties` 에 레거시 플래그 3개를 켜 두었다.
+
+```
+android.builtInKotlin=false
+android.newDsl=false
+android.disallowKotlinSourceSets=false
+```
+
+**AGP 10 에서 제거된다.** AGP 를 올리기 전에 내장 Kotlin + 신 DSL 로 이전해야 한다.
+지금 이전하지 않은 이유: M0 의 목표는 검증된 골격이고, 이전은 빌드 스크립트 전반을
+건드리는 별도 작업이다. 이전 시점은 AGP 업그레이드가 필요해지는 때 또는 M9 중 빠른 쪽.
