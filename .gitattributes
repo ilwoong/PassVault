@@ -1,0 +1,11 @@
+# 텍스트 파일은 저장소와 워킹 트리 모두 LF로 고정한다.
+* text=auto eol=lf
+
+# Windows 전용 스크립트만 예외 (gradlew.bat 등은 CRLF여야 동작한다)
+*.bat text eol=crlf
+
+# 바이너리로 명시해 줄바꿈 변환을 막는다
+*.jar binary
+*.keystore binary
+*.jks binary
+*.png binary
