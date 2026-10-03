@@ -17,7 +17,7 @@
 ## ARC-02 패키지 구조
 
 ```
-com.beginkub.passvault
+io.github.ilwoong.passvault
 ├─ PassVaultApp.kt            // Application, Hilt 진입점
 ├─ MainActivity.kt            // 단일 Activity. FLAG_SECURE 설정 (LOCK-06)
 ├─ security/                  // ← Android UI 의존 없음
@@ -103,7 +103,7 @@ ui  →  data  →  security
 
 | 항목 | 값 |
 |------|-----|
-| `applicationId` | `com.beginkub.passvault` |
+| `applicationId` | `io.github.ilwoong.passvault` — GitHub 공개 저장소 네임스페이스(`io.github.<handle>`). Play Store 공개 후에는 변경 불가 |
 | `minSdk` / `targetSdk` / `compileSdk` | 28 / 36 / 36 |
 | `allowBackup` | `false` (SEC-03) |
 | `dataExtractionRules` | 기기 간 전송·클라우드 백업 모두 제외 (SEC-03) |

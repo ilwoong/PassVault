@@ -11,7 +11,7 @@
 
 **산출물**: 빈 Compose 앱, version catalog, Hilt 배선, 패키지 구조([ARC-02](04-architecture.md)) 생성, 매니페스트 보안 설정([ARC-07](04-architecture.md)).
 
-- `applicationId` = `com.beginkub.passvault` 적용 ([ARC-07](04-architecture.md))
+- `applicationId` = `io.github.ilwoong.passvault` 적용 ([ARC-07](04-architecture.md))
 - `allowBackup=false`, `dataExtractionRules`, 권한 0개
 - `MainActivity` 에 `FLAG_SECURE` ([LOCK-06](06-lock-policy.md))
 

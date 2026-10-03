@@ -1,4 +1,4 @@
-package com.beginkub.passvault.ui.theme
+package io.github.ilwoong.passvault.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

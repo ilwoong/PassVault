@@ -8,11 +8,11 @@ plugins {
 
 // ARC-07 빌드 설정
 android {
-    namespace = "com.beginkub.passvault"
+    namespace = "io.github.ilwoong.passvault"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.beginkub.passvault"
+        applicationId = "io.github.ilwoong.passvault"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

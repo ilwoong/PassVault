@@ -1,4 +1,4 @@
-package com.beginkub.passvault
+package io.github.ilwoong.passvault
 
 import android.os.Bundle
 import android.view.WindowManager
@@ -12,7 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.beginkub.passvault.ui.theme.PassVaultTheme
+import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

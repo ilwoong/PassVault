@@ -1,4 +1,4 @@
-package com.beginkub.passvault
+package io.github.ilwoong.passvault
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
