@@ -150,7 +150,7 @@ clipboardClearSeconds: Int  // 기본 30. 0 = 자동 삭제 안 함
 | `entryId` | TEXT PK FK | |
 | `cardholderName` | TEXT? | |
 | `number` | TEXT? | **비밀 필드**. 숫자만 저장, 하이픈 제거 |
-| `last4` | TEXT? | `subtitle` 생성용. 비밀로 보지 않는다 |
+| `last4` | TEXT? | `subtitle` 생성용. 비밀로 보지 않는다. **번호가 4자리보다 길 때만** 만든다 — 4자리 이하면 `last4` 가 번호 전체가 되어 목록에 비밀이 노출된다 |
 | `brand` | TEXT? | 사용자 입력. 번호에서 자동 판별하지 않는다 (불필요한 로직) |
 | `expiryMonth` / `expiryYear` | INTEGER? | |
 | `cvc` | TEXT? | **비밀 필드** |
@@ -187,7 +187,7 @@ F-04. 각 서비스가 요구하는 비밀번호 규칙을 기록해 두고, 저
 | `lowerRule` | TEXT | 영문 소문자 |
 | `digitRule` | TEXT | 숫자 |
 | `symbolRule` | TEXT | 특수문자 |
-| `allowedSymbols` | TEXT? | 허용 특수문자 집합. 예: `!@#$%^&*` . null = 제한 없음/모름 |
+| `allowedSymbols` | TEXT? | 허용 특수문자 집합. 예: `!@#$%^&*` . null = 제한 없음/모름. **빈 문자열도 null 로 취급한다** — 비워 둔 입력란이 "특수문자 전부 금지"로 해석되는 오탐을 막는다 |
 | `forbiddenSymbols` | TEXT? | 금지 특수문자 집합 |
 | `maxRepeatRun` | INTEGER? | 같은 문자 연속 허용 최대 길이. 예: 2 = `aaa` 불가 |
 | `disallowSpace` | INTEGER | 0/1 — 공백 금지 여부 |
@@ -232,6 +232,12 @@ fun evaluate(password: CharArray, policy: PasswordPolicy, passwordUpdatedAt: Lon
 - `ROTATION_DUE` 는 `passwordUpdatedAtEpochMs` 가 null 이면 판정하지 않는다.
 - `rawNote` 는 자유 텍스트이므로 **검사하지 않고 상세 화면에 그대로 보여준다.**
 - "특수문자" 정의: ASCII 출력 가능 문자 중 영문·숫자·공백이 아닌 것. 이 정의를 코드에 상수로 고정한다.
+- 대문자·소문자·숫자도 ASCII 범위(`A-Z`, `a-z`, `0-9`)로 판정한다. 한글 등 비 ASCII 문자는 어느 종류에도 속하지 않는다.
+- 길이는 UTF-16 코드 유닛 수다. 웹 서비스 대부분이 쓰는 JavaScript `length` 와 같은 기준이다.
+- 공백 판정은 `Char.isWhitespace()` — 탭·줄바꿈·전각 공백을 포함한다.
+- `ROTATION_DUE` 는 경과 일수 ≥ `rotationDays` 일 때다.
+- 정책이 있는데 비밀번호가 비어 있으면 빈 문자열로 평가한다 (`minLength` 가 있으면 `TOO_SHORT`).
+- `hasPolicyViolation` = 오류 등급 위반이 하나라도 있음, `hasRotationDue` = `ROTATION_DUE` 있음 (DM-03).
 
 ## DM-11 쓰기 불변식
 

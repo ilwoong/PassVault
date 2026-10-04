@@ -183,6 +183,7 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
 | 비밀번호 입력 바이트 | 수초 | KDF 호출 직후 |
 | MK | 수초 | VK 언래핑 직후 |
 | VK | 세션 전체 | 잠금 시 (LOCK-04) |
+| SQLCipher 패스프레이즈 (`x'<VK hex>'` ASCII 바이트) | 세션 전체 | DB close **직후** (CRY-17) |
 | BioKey | 없음 | Keystore 내부에만 존재 |
 
 규칙:
@@ -195,6 +196,10 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
   `rawHashAsByteArray()` 로 꺼낸 사본만 지우면 원본 두 개가 GC 전까지 남는다.
   두 버퍼 모두 전체 용량을 0으로 덮어쓴다. 라이브러리의 `wipeDirectBuffer` 는 바이트코드상 public 이지만
   Kotlin `internal` 이라 호출할 수 없으므로 자체 구현을 쓴다. 라이브러리를 교체할 때 이 규칙을 다시 확인한다.
+- **SEC-12 예외 범위**: Room 엔티티의 TEXT 컬럼과 Compose `TextField` 는 `String` 을 요구한다.
+  따라서 **항목의 비밀 필드**(비밀번호·카드번호 등)는 데이터 계층과 UI 에서 `String` 으로 존재한다.
+  `String` 금지 규칙이 예외 없이 적용되는 대상은 **키(MK·VK·패스프레이즈)와 마스터 비밀번호의 KDF 입력**이다.
+  BLOB 저장으로 우회하는 안은 UI·백업 JSON 에서 어차피 `String` 이 되므로 실익 대비 복잡도가 커 택하지 않는다.
 - `CharArray` → `ByteArray`(UTF-8) 변환은 `String` 을 거치지 않는다. 인코더 중간 버퍼도 지운다.
   `CharsetEncoder.encode(CharBuffer)` 는 출력이 넘치면 버퍼를 **재할당하며 이전 버퍼를 지우지 않고 버린다.**
   최대 크기(`maxBytesPerChar × 길이`)로 한 번만 할당해 재할당을 원천 차단한다.
@@ -202,6 +207,18 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
   둘 다 지울 공개 수단이 없다 (리플렉션은 Android hidden API 제한에 걸리고 깨지기 쉽다).
   JVM 한계로 받아들이며 SEC-12 가 "완화 조치"인 이유 중 하나다. 객체 수명을 함수 지역으로 짧게 유지하는 것으로 대응한다.
 - 로그·`toString()`·크래시 리포트에 키가 들어가지 않는다 (SEC-10).
+
+## CRY-17 SQLCipher 패스프레이즈 수명
+
+sqlcipher-android 4.19.1 바이트코드로 확인한 사실:
+`SupportOpenHelperFactory` → `SQLiteOpenHelper` → `SQLiteDatabaseConfiguration`(복사 생성자 포함)이
+모두 **같은 `byte[]` 의 참조**를 보관한다. 복제하지 않는다.
+
+따라서:
+- **오픈 직후 지우면 안 된다.** Room 은 DB 를 지연 오픈하고, WAL 커넥션 풀은 읽기 커넥션을 필요할 때
+  새로 연다. 그때마다 이 배열로 키를 건다. 지우면 이후 커넥션이 "file is not a database" 로 실패한다.
+- **DB close 직후 지운다.** 모든 보관처가 같은 배열을 보므로 한 번 지우면 Java 쪽 사본이 남지 않는다.
+- 이 배열은 VK 의 hex 표현이므로 VK 와 같은 등급의 비밀이다. DB 객체가 소유하고 `close()` 에서 지운다.
 
 ## 검토 후 제외한 대안
 
