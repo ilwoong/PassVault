@@ -15,7 +15,15 @@ class VaultMeta(
     val failedAttempts: Int,
     val lockoutUntilEpochMs: Long,
     val vaultCreatedAtEpochMs: Long,
-)
+    val lockoutBootCount: Int = 0,
+    val lockoutUntilElapsedMs: Long = 0,
+) {
+    /** LOCK-05 실패 상태만 바꾼 사본. */
+    fun withLockout(failedAttempts: Int, untilEpochMs: Long, bootCount: Int, untilElapsedMs: Long) = VaultMeta(
+        kdfSalt, kdfParams, wrappedVkByMk, wrappedVkByBio,
+        failedAttempts, untilEpochMs, vaultCreatedAtEpochMs, bootCount, untilElapsedMs,
+    )
+}
 
 /** DM-01: Corrupt 와 Absent 를 절대 섞지 않는다. 섞으면 온보딩이 기존 금고를 덮어쓴다. */
 sealed interface MetaReadResult {
@@ -24,7 +32,7 @@ sealed interface MetaReadResult {
     class Present(val meta: VaultMeta) : MetaReadResult
 }
 
-/** DM-01: 176 바이트 고정 레이아웃. 쓰기는 임시 파일 → fsync → 원자적 rename 만 허용한다. */
+/** DM-01: 188 바이트 고정 레이아웃. 쓰기는 임시 파일 → fsync → 원자적 rename 만 허용한다. */
 class VaultMetaStore(private val file: File) {
 
     private val tmp = File(file.parentFile, file.name + ".tmp")
@@ -50,7 +58,7 @@ class VaultMetaStore(private val file: File) {
     }
 
     companion object {
-        const val SIZE_BYTES = 176
+        const val SIZE_BYTES = 188
         const val META_VERSION: Byte = 1
         private val MAGIC = "PVMETA".toByteArray(Charsets.US_ASCII)
         private const val WRAPPED_BYTES = AesGcmKeyWrapper.NONCE_BYTES + KEY_BYTES + AesGcmKeyWrapper.TAG_BYTES
@@ -69,6 +77,8 @@ class VaultMetaStore(private val file: File) {
             buf.putInt(meta.failedAttempts)
             buf.putLong(meta.lockoutUntilEpochMs)
             buf.putLong(meta.vaultCreatedAtEpochMs)
+            buf.putInt(meta.lockoutBootCount)
+            buf.putLong(meta.lockoutUntilElapsedMs)
             return buf.array()
         }
 
@@ -96,6 +106,8 @@ class VaultMetaStore(private val file: File) {
                 failedAttempts = buf.int,
                 lockoutUntilEpochMs = buf.long,
                 vaultCreatedAtEpochMs = buf.long,
+                lockoutBootCount = buf.int,
+                lockoutUntilElapsedMs = buf.long,
             )
         }
 

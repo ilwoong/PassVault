@@ -26,7 +26,7 @@ class VaultKeyManagerTest {
         val cache = InstrumentationRegistry.getInstrumentation().targetContext.cacheDir
         dir = File(cache, "vkm-${System.nanoTime()}").apply { mkdirs() }
         metaFile = File(dir, "vault_meta")
-        manager = VaultKeyManager(VaultMetaStore(metaFile), Argon2KeyDeriver(), AesGcmKeyWrapper())
+        manager = VaultKeyManager(VaultMetaStore(metaFile), Argon2KeyDeriver(), AesGcmKeyWrapper(), FakeClocks())
     }
 
     @After

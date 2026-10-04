@@ -52,9 +52,9 @@ class VaultMetaStoreTest {
     }
 
     @Test
-    fun fileIsExactly176Bytes() {
+    fun fileIsExactly188Bytes() {
         store.write(meta(1))
-        assertEquals(176L, file.length())
+        assertEquals(188L, file.length())
     }
 
     @Test
@@ -77,7 +77,7 @@ class VaultMetaStoreTest {
     fun truncatedOrExtendedFileIsCorrupt() {
         store.write(meta(1))
         val valid = file.readBytes()
-        for (bytes in listOf(valid.copyOf(175), valid + 0)) {
+        for (bytes in listOf(valid.copyOf(187), valid + 0)) {
             file.writeBytes(bytes)
             assertEquals(MetaReadResult.Corrupt, store.read())
         }
@@ -152,6 +152,8 @@ class VaultMetaStoreTest {
         failedAttempts = seed,
         lockoutUntilEpochMs = seed * 1_000L,
         vaultCreatedAtEpochMs = seed * 7L,
+        lockoutBootCount = seed * 11,
+        lockoutUntilElapsedMs = seed * 13L,
     )
 
     private fun present(): VaultMeta = (store.read() as MetaReadResult.Present).meta
@@ -172,5 +174,7 @@ class VaultMetaStoreTest {
         assertEquals(e.failedAttempts, a.failedAttempts)
         assertEquals(e.lockoutUntilEpochMs, a.lockoutUntilEpochMs)
         assertEquals(e.vaultCreatedAtEpochMs, a.vaultCreatedAtEpochMs)
+        assertEquals(e.lockoutBootCount, a.lockoutBootCount)
+        assertEquals(e.lockoutUntilElapsedMs, a.lockoutUntilElapsedMs)
     }
 }

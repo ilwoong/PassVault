@@ -4,19 +4,20 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.ilwoong.passvault.security.SessionManager
+import io.github.ilwoong.passvault.ui.PassVaultRoot
+import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var session: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // LOCK-06: 스크린샷·화면 녹화·최근앱 미리보기 차단.
@@ -29,23 +30,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             PassVaultTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Placeholder()
+                    PassVaultRoot(session)
                 }
             }
         }
     }
-}
-
-/** M0 골격 확인용. M3 에서 잠금 해제 화면(UX-02)으로 교체된다. */
-@Composable
-private fun Placeholder() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("PassVault")
-    }
-}
-
-@Preview
-@Composable
-private fun PlaceholderPreview() {
-    PassVaultTheme { Placeholder() }
 }

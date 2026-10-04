@@ -1,4 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PassVault</string>
+
+    <!-- 공통 -->
+    <string name="action_next">다음</string>
+    <string name="action_lock">잠그기</string>
+
+    <!-- UX-01 온보딩 -->
+    <string name="onboarding_title">PassVault 시작하기</string>
+    <string name="onboarding_intro">비밀번호와 중요한 정보를 이 기기 안에서만 암호화해 보관합니다. 데이터는 기기 밖으로 나가지 않습니다.</string>
+    <string name="onboarding_warning">마스터 비밀번호를 잊으면 데이터를 복구할 수 없습니다. 비밀번호를 재설정하는 방법은 없습니다.</string>
+    <string name="onboarding_acknowledge">이해했습니다. 비밀번호를 잊으면 데이터를 잃습니다.</string>
+    <string name="onboarding_password_title">마스터 비밀번호 설정</string>
+    <string name="label_master_password">마스터 비밀번호</string>
+    <string name="label_confirm_password">비밀번호 확인</string>
+    <string name="password_too_short">%1$d자 이상 입력하세요</string>
+    <string name="password_mismatch">비밀번호가 일치하지 않습니다</string>
+    <string name="strength_weak">강도: 약함 — 흔한 비밀번호입니다</string>
+    <string name="strength_fair">강도: 보통</string>
+    <string name="strength_strong">강도: 강함</string>
+    <string name="strength_very_strong">강도: 매우 강함</string>
+    <string name="action_create_vault">금고 만들기</string>
+    <string name="creating_vault">금고를 만드는 중입니다. 몇 초 걸릴 수 있습니다.</string>
+    <string name="error_create_failed">금고를 만들지 못했습니다. 다시 시도하세요.</string>
+
+    <!-- UX-02 잠금 해제 -->
+    <string name="unlock_title">금고 잠금 해제</string>
+    <string name="action_unlock">잠금 해제</string>
+    <string name="unlocking">여는 중…</string>
+    <string name="error_wrong_password">비밀번호가 올바르지 않습니다</string>
+    <string name="lockout_remaining">%1$s 후에 다시 시도할 수 있습니다</string>
+
+    <!-- ARC-06 -->
+    <string name="cannot_open_title">금고를 열 수 없습니다</string>
+    <string name="cannot_open_body">금고 파일이 손상되었거나 읽을 수 없습니다. 백업 파일이 있다면 복구할 수 있습니다.</string>
+
+    <!-- 금고 (M4 에서 목록으로 교체) -->
+    <string name="vault_unlocked">금고가 열렸습니다</string>
 </resources>
