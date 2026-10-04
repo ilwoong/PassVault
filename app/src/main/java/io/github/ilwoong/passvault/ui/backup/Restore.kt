@@ -62,7 +62,7 @@ enum class RestoreStep { PICK_FILE, PASSWORD, DECRYPTING, NEW_PASSWORD, CONFIRM,
  */
 @HiltViewModel
 class RestoreViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val session: SessionManager,
     private val holder: VaultDatabaseHolder,
     private val codec: BackupCodec,

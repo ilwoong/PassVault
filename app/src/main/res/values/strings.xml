@@ -258,4 +258,14 @@
     <string name="welcome_backup_title">백업을 만들어 두세요</string>
     <string name="welcome_backup_body">마스터 비밀번호를 잊거나 기기를 잃어버리면 백업 파일로만 복구할 수 있습니다. 나중에 설정에서 만들 수도 있습니다.</string>
     <string name="action_backup_now">지금 백업</string>
+
+    <!-- UX-12 정보 -->
+    <string name="settings_about">정보</string>
+    <string name="settings_about_desc">버전, 오픈소스 라이선스</string>
+    <string name="about_title">정보</string>
+    <string name="about_version">버전 %1$s</string>
+    <string name="about_local_only">데이터는 이 기기에만 저장됩니다</string>
+    <string name="about_local_only_desc">PassVault 는 인터넷 권한이 없어 어떤 데이터도 외부로 보내지 않습니다. 기기를 바꾸거나 잃어버릴 때를 대비해 백업 파일을 직접 만들어 두세요.</string>
+    <string name="about_licenses">오픈소스 라이선스</string>
+    <string name="action_close">닫기</string>
 </resources>

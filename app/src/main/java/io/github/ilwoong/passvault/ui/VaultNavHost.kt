@@ -18,6 +18,7 @@ import io.github.ilwoong.passvault.ui.edit.EntryEditRoute
 import io.github.ilwoong.passvault.ui.list.EntryListRoute
 import io.github.ilwoong.passvault.ui.onboarding.WelcomeBackupScreen
 import io.github.ilwoong.passvault.ui.onboarding.WelcomeBiometricRoute
+import io.github.ilwoong.passvault.ui.settings.AboutRoute
 import io.github.ilwoong.passvault.ui.settings.ChangePasswordRoute
 import io.github.ilwoong.passvault.ui.settings.SettingsRoute
 import javax.inject.Inject
@@ -91,10 +92,12 @@ fun VaultNavHost(host: VaultHostViewModel = hiltViewModel()) {
                 onChangePassword = { nav.navigate(CHANGE_PASSWORD) },
                 onBackupExport = { nav.navigate(BACKUP_EXPORT) },
                 onBackupImport = { nav.navigate(BACKUP_IMPORT) },
+                onAbout = { nav.navigate(ABOUT) },
             )
         }
         composable(BACKUP_EXPORT) { ExportRoute(onDone = { nav.popBackStack() }) }
         composable(BACKUP_IMPORT) { ImportRoute(onDone = { nav.popBackStack() }) }
+        composable(ABOUT) { AboutRoute(onBack = { nav.popBackStack() }) }
         composable(CHANGE_PASSWORD) {
             ChangePasswordRoute(onDone = { nav.popBackStack() })
         }
@@ -110,3 +113,4 @@ private const val DETAIL = "detail/{id}"
 private const val EDIT = "edit?id={id}&type={type}"
 private const val SETTINGS = "settings"
 private const val CHANGE_PASSWORD = "settings/password"
+private const val ABOUT = "settings/about"

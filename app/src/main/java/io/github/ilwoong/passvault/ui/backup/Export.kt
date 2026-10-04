@@ -58,7 +58,7 @@ enum class ExportStep { REAUTH, PASSWORD, SAME_AS_MASTER, PICK_FILE, WRITING, DO
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val session: SessionManager,
     private val repo: EntryRepository,
     private val codec: BackupCodec,

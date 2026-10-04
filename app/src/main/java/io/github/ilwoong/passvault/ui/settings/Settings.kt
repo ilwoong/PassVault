@@ -155,6 +155,7 @@ fun SettingsRoute(
     onChangePassword: () -> Unit,
     onBackupExport: () -> Unit,
     onBackupImport: () -> Unit,
+    onAbout: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val activity = LocalActivity.current as FragmentActivity
@@ -185,10 +186,11 @@ fun SettingsRoute(
         onClipboardChange = vm::setClipboardClearSeconds,
         onBackupExport = onBackupExport,
         onBackupImport = onBackupImport,
+        onAbout = onAbout,
     )
 }
 
-/** UX-08 ~ UX-12. M6 은 생체(UX-09)와 비밀번호 변경(UX-10). 나머지는 M7·M8·M9 에서 붙는다. */
+/** UX-08 ~ UX-12 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -210,6 +212,7 @@ fun SettingsScreen(
     onClipboardChange: (Int) -> Unit = {},
     onBackupExport: () -> Unit = {},
     onBackupImport: () -> Unit = {},
+    onAbout: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     var choosing by remember { mutableStateOf<Choice?>(null) }
@@ -297,6 +300,13 @@ fun SettingsScreen(
                 modifier = Modifier.clickable(onClick = onBackupImport),
                 headlineContent = { Text(stringResource(R.string.settings_backup_import)) },
                 supportingContent = { Text(stringResource(R.string.settings_backup_import_desc)) },
+            )
+            HorizontalDivider()
+            // UX-12
+            ListItem(
+                modifier = Modifier.clickable(onClick = onAbout),
+                headlineContent = { Text(stringResource(R.string.settings_about)) },
+                supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
             )
             HorizontalDivider()
         }

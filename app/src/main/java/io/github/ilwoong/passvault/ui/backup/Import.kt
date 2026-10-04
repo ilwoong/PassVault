@@ -62,7 +62,7 @@ enum class ImportStep { REAUTH, PICK_FILE, PASSWORD, DECRYPTING, CONFIRM, REPLAC
 
 @HiltViewModel
 class ImportViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val session: SessionManager,
     private val repo: EntryRepository,
     private val codec: BackupCodec,

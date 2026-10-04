@@ -118,7 +118,7 @@ fun EntryDetailRoute(
 }
 
 /** 한 줄. 비밀이면 기본 마스킹이다. */
-data class DetailField(@StringRes val label: Int, val value: String, val secret: Boolean)
+data class DetailField(@param:StringRes val label: Int, val value: String, val secret: Boolean)
 
 fun detailFields(content: EntryContent): List<DetailField> {
     val fields = when (content) {

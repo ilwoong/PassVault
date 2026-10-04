@@ -3,8 +3,8 @@
 # 네트워크 라이브러리는 추이적으로도 들어오면 안 된다 (NFR-03).
 [versions]
 agp = "9.2.1"
-kotlin = "2.1.10"
-ksp = "2.1.10-1.0.29"
+kotlin = "2.3.21"
+ksp = "2.3.12"
 hilt = "2.59"
 composeBom = "2026.02.01"
 coreKtx = "1.18.0"
@@ -69,7 +69,6 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

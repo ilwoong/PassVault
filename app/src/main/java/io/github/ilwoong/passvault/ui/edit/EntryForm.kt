@@ -19,7 +19,7 @@ enum class FieldKey {
 /** 입력 방식. 학습 차단은 모든 종류에 루트 인터셉터가 건다 (UX-06). */
 enum class FieldKind { PLAIN, SECRET, SECRET_NUMBER, MULTILINE, MONTH, YEAR, DATE }
 
-class FormField(val key: FieldKey, @StringRes val label: Int, val kind: FieldKind, val initial: String) {
+class FormField(val key: FieldKey, @param:StringRes val label: Int, val kind: FieldKind, val initial: String) {
     /** UX-00b: 저장되지 않는 상태다. */
     val state = TextFieldState(initial)
 
