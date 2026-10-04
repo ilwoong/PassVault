@@ -34,7 +34,7 @@ class FormField(val key: FieldKey, @param:StringRes val label: Int, val kind: Fi
 internal fun validate(kind: FieldKind, text: String): Boolean = when {
     text.isEmpty() -> true
     kind == FieldKind.MONTH -> text.toIntOrNull()?.let { it in 1..12 } == true
-    kind == FieldKind.YEAR -> text.length == 4 && text.all { it in '0'..'9' }
+    kind == FieldKind.YEAR -> text.length == 4 && text.toIntOrNull()?.let { it in 1000..9999 } == true
     kind == FieldKind.DATE -> try {
         LocalDate.parse(text)
         true

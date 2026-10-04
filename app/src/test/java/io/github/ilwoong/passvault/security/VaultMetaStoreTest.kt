@@ -97,6 +97,7 @@ class VaultMetaStoreTest {
         assertCorruptAfter { it.putInt(24, KdfParams.DEFAULT_MEMORY_KIB * 2) } // m 과대 (비트 뒤집힘)
         assertCorruptAfter { it.putInt(24, KdfParams.MIN_MEMORY_KIB - 1) }     // m 과소
         assertCorruptAfter { it.putInt(28, 0) }                                // t = 0
+        assertCorruptAfter { it.putInt(28, 2) }                                // t 과소 (기본값 3 에서 비트 하나)
         assertCorruptAfter { it.putInt(28, KdfParams.MAX_ITERATIONS + 1) }     // t 과대
         assertCorruptAfter { it.putInt(32, 1) }                                // p ≠ 2
     }

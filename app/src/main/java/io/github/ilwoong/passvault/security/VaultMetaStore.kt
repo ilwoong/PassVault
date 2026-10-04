@@ -120,7 +120,7 @@ class VaultMetaStore(private val file: File) {
         /** v1 파일은 CRY-09 캘리브레이션만 쓰므로 그 범위 밖은 손상이다. */
         private fun KdfParams.isInCalibrationRange() =
             memoryKiB in KdfParams.MIN_MEMORY_KIB..KdfParams.DEFAULT_MEMORY_KIB &&
-                iterations in 1..KdfParams.MAX_ITERATIONS &&
+                iterations in KdfParams.DEFAULT_ITERATIONS..KdfParams.MAX_ITERATIONS &&
                 parallelism == KdfParams.PARALLELISM
     }
 }

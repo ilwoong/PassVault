@@ -60,6 +60,7 @@ class VaultUiLogicTest {
         assertFalse(validate(FieldKind.MONTH, "0"))
         assertTrue(validate(FieldKind.YEAR, "2030"))
         assertFalse(validate(FieldKind.YEAR, "30"))
+        assertFalse("가져오기(BK-08)가 받지 않는 범위", validate(FieldKind.YEAR, "0999"))
         assertTrue(validate(FieldKind.DATE, "2024-02-29"))
         assertFalse(validate(FieldKind.DATE, "2023-02-29"))
         assertFalse(validate(FieldKind.DATE, "2024/01/01"))
