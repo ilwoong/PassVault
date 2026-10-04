@@ -7,6 +7,8 @@ import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.model.EntryContent
 import io.github.ilwoong.passvault.data.model.EntryDraft
 import io.github.ilwoong.passvault.data.model.EntryType
+import io.github.ilwoong.passvault.data.model.MAX_TEXT_LENGTH
+import io.github.ilwoong.passvault.data.model.MAX_TITLE_LENGTH
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -24,6 +26,9 @@ class FormField(val key: FieldKey, @param:StringRes val label: Int, val kind: Fi
     val state = TextFieldState(initial)
 
     val isValid: Boolean get() = validate(kind, state.text.toString())
+
+    /** UX-06 길이 상한. */
+    val maxLength: Int get() = if (key == FieldKey.TITLE) MAX_TITLE_LENGTH else MAX_TEXT_LENGTH
 }
 
 internal fun validate(kind: FieldKind, text: String): Boolean = when {

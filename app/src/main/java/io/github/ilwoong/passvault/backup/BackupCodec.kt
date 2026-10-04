@@ -4,6 +4,8 @@ import io.github.ilwoong.passvault.data.model.CharClassRule
 import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.model.EntryContent
 import io.github.ilwoong.passvault.data.model.EntryType
+import io.github.ilwoong.passvault.data.model.MAX_TEXT_LENGTH
+import io.github.ilwoong.passvault.data.model.MAX_TITLE_LENGTH
 import io.github.ilwoong.passvault.data.model.PasswordPolicy
 import io.github.ilwoong.passvault.data.policy.isEmpty
 import io.github.ilwoong.passvault.security.KdfParams
@@ -312,8 +314,8 @@ class BackupCodec(
 
         const val MAX_FILE_BYTES = 64 * 1024 * 1024
         const val MAX_ENTRIES = 50_000
-        const val MAX_TITLE = 200
-        const val MAX_TEXT = 20_000
+        const val MAX_TITLE = MAX_TITLE_LENGTH
+        const val MAX_TEXT = MAX_TEXT_LENGTH
         const val UNTITLED = "(제목 없음)"
 
         private const val SALT_BYTES = 16

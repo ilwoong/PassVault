@@ -28,16 +28,16 @@ import io.github.ilwoong.passvault.ui.unlock.UnlockRoute
 
 /**
  * UX-00: 세션 상태로 최상위 분기를 고른다. 분기가 바뀌면 이전 분기의 컴포지션·ViewModel 이 함께 사라진다.
- * UX-06: 앱의 모든 입력란에 IME 개인화 학습 차단을 건다.
+ * UX-06: 앱의 모든 입력란에 IME 개인화 학습 차단을 건다. 키보드 입력은 [onTextInput] 으로 알린다 (LOCK-03).
  */
 @Composable
-fun PassVaultRoot(session: SessionManager) = NoPersonalizedLearning {
+fun PassVaultRoot(session: SessionManager, onTextInput: () -> Unit = {}) = NoPersonalizedLearning(onTextInput) {
     val state by session.state.collectAsStateWithLifecycle()
     val branch = when (state) {
         SessionState.NoVault, SessionState.Creating -> "onboarding"
         // 손상 화면에서 시작한 복구(BK-05)가 상태 변화로 취소되지 않게 같은 분기로 둔다
         SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> "unlock"
-        SessionState.Unlocked -> "vault"
+        SessionState.Unlocked -> VAULT_BRANCH
     }
     BranchScope(branch) {
         when (state) {

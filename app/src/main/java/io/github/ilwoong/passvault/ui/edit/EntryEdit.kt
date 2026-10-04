@@ -5,7 +5,9 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
@@ -18,6 +20,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import io.github.ilwoong.passvault.data.model.CharClassRule
+import io.github.ilwoong.passvault.data.model.MAX_TEXT_LENGTH
 import io.github.ilwoong.passvault.data.policy.PasswordPolicyEvaluator
 import io.github.ilwoong.passvault.data.policy.PolicyReport
 import io.github.ilwoong.passvault.security.zeroize
@@ -206,6 +209,7 @@ private fun FieldEditor(field: FormField, isTitle: Boolean) {
                 state = field.state,
                 modifier = modifier,
                 label = { Text(stringResource(field.label)) },
+                inputTransformation = InputTransformation.maxLength(field.maxLength),
                 textObfuscationMode = if (visible) TextObfuscationMode.Visible else TextObfuscationMode.RevealLastTyped,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (field.kind == FieldKind.SECRET_NUMBER) KeyboardType.NumberPassword else KeyboardType.Password,
@@ -221,6 +225,7 @@ private fun FieldEditor(field: FormField, isTitle: Boolean) {
             state = field.state,
             modifier = modifier,
             label = { Text(stringResource(field.label)) },
+            inputTransformation = InputTransformation.maxLength(field.maxLength),
             lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 3),
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
         )
@@ -231,6 +236,7 @@ private fun FieldEditor(field: FormField, isTitle: Boolean) {
                 state = field.state,
                 modifier = modifier,
                 label = { Text(stringResource(field.label)) },
+                inputTransformation = InputTransformation.maxLength(field.maxLength),
                 lineLimits = TextFieldLineLimits.SingleLine,
                 isError = invalid,
                 supportingText = when {
@@ -291,6 +297,7 @@ private fun PolicySection(form: EntryForm, policy: PolicyForm, now: Long) {
                 state = policy.allowedSymbols,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.policy_allowed_symbols)) },
+                inputTransformation = InputTransformation.maxLength(MAX_TEXT_LENGTH),
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
             )
@@ -298,6 +305,7 @@ private fun PolicySection(form: EntryForm, policy: PolicyForm, now: Long) {
                 state = policy.forbiddenSymbols,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.policy_forbidden_symbols)) },
+                inputTransformation = InputTransformation.maxLength(MAX_TEXT_LENGTH),
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
             )
@@ -316,6 +324,7 @@ private fun PolicySection(form: EntryForm, policy: PolicyForm, now: Long) {
                 state = policy.rawNote,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.policy_raw_note)) },
+                inputTransformation = InputTransformation.maxLength(MAX_TEXT_LENGTH),
                 placeholder = { Text(stringResource(R.string.policy_raw_note_hint)) },
                 lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2),
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),

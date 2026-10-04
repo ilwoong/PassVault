@@ -1,5 +1,12 @@
 package io.github.ilwoong.passvault.ui
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import io.github.ilwoong.passvault.security.SessionState
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -83,15 +90,37 @@ class VaultUiLogicTest {
         override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = Probe() as T
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun switchingBranchClearsPreviousBranchViewModels() {
-        val stores = BranchStores()
-        val vault = ViewModelProvider.create(stores.storeFor("vault"), factory)[Probe::class]
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val stores = BranchStores(MutableStateFlow(SessionState.Unlocked))
+            val vault = ViewModelProvider.create(stores.storeFor("vault"), factory)[Probe::class]
 
-        assertTrue("같은 분기면 그대로", stores.storeFor("vault") === stores.storeFor("vault"))
-        assertFalse(vault.cleared)
+            assertTrue("같은 분기면 그대로", stores.storeFor("vault") === stores.storeFor("vault"))
+            assertFalse(vault.cleared)
 
-        stores.storeFor("unlock") // 잠금
-        assertTrue("잠기면 금고 분기 ViewModel 이 비워져야 한다", vault.cleared)
+            stores.storeFor("unlock") // 분기 전환
+            assertTrue("분기가 바뀌면 이전 분기 ViewModel 이 비워져야 한다", vault.cleared)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun lockClearsVaultBranchWithoutWaitingForBranchSwitch() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val state = MutableStateFlow<SessionState>(SessionState.Unlocked)
+            val stores = BranchStores(state)
+            val vault = ViewModelProvider.create(stores.storeFor(VAULT_BRANCH), factory)[Probe::class]
+
+            state.value = SessionState.Locked // 컴포지션(storeFor)은 아직 돌지 않았다
+            assertTrue(vault.cleared)
+        } finally {
+            Dispatchers.resetMain()
+        }
     }
 }

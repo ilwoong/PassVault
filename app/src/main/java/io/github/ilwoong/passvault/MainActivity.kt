@@ -41,7 +41,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             PassVaultTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    PassVaultRoot(session)
+                    PassVaultRoot(session, onTextInput = autoLock::onInteraction)
                 }
             }
         }
@@ -58,7 +58,7 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    /** LOCK-03: 터치·키 입력은 Compose 입력을 포함해 모두 여기를 지난다. */
+    /** LOCK-03: 터치와 하드웨어 키. 소프트 키보드 입력은 여기를 지나지 않아 입력 인터셉터가 따로 알린다. */
     override fun onUserInteraction() {
         super.onUserInteraction()
         autoLock.onInteraction()

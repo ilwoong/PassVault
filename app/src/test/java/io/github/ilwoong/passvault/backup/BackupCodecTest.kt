@@ -3,6 +3,8 @@ package io.github.ilwoong.passvault.backup
 import io.github.ilwoong.passvault.data.model.CharClassRule
 import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.model.EntryContent
+import io.github.ilwoong.passvault.data.model.MAX_TEXT_LENGTH
+import io.github.ilwoong.passvault.data.model.MAX_TITLE_LENGTH
 import io.github.ilwoong.passvault.data.model.PasswordPolicy
 import io.github.ilwoong.passvault.security.KdfParams
 import org.json.JSONArray
@@ -65,6 +67,27 @@ class BackupCodecTest {
         val r = codec.decode(encode(), pw.toCharArray()) as BackupResult.Success
         assertEquals(samples, r.entries)
         assertEquals(9_999L, r.exportedAtEpochMs)
+    }
+
+    @Test
+    fun entriesAtTheEditLimitsRoundTrip() {
+        // UX-06 이 받아 주는 가장 긴 값은 BK-08 검증을 통과해야 한다 — 아니면 앱이 만든 백업을 앱이 거부한다
+        val title = "t".repeat(MAX_TITLE_LENGTH)
+        val text = "x".repeat(MAX_TEXT_LENGTH)
+        val longest = listOf(
+            Entry(
+                UUID.randomUUID().toString(), title, false, 1, 2, 1,
+                EntryContent.Login(text, text, text, text, PasswordPolicy(allowedSymbols = text, forbiddenSymbols = text, rawNote = text)),
+            ),
+            Entry(UUID.randomUUID().toString(), title, false, 1, 2, null, EntryContent.Note(text)),
+            Entry(UUID.randomUUID().toString(), title, false, 1, 2, null, EntryContent.Card(text, text, text, 1, 2030, text, text, text)),
+            Entry(
+                UUID.randomUUID().toString(), title, false, 1, 2, null,
+                EntryContent.Identity(text, text, text, text, "2020-01-01", "2030-01-01", text),
+            ),
+        )
+        val r = codec.decode(encode(longest), pw.toCharArray()) as BackupResult.Success
+        assertEquals(longest, r.entries)
     }
 
     @Test

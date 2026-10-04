@@ -2,6 +2,13 @@ package io.github.ilwoong.passvault.data.model
 
 enum class EntryType { LOGIN, NOTE, CARD, IDENTITY }
 
+/**
+ * UX-06, BK-08 길이 상한. 편집 화면이 입력에서 막고 백업 가져오기가 같은 값으로 검증한다.
+ * 둘이 어긋나면 앱이 만든 백업을 앱이 복구하지 못한다.
+ */
+const val MAX_TITLE_LENGTH = 200
+const val MAX_TEXT_LENGTH = 20_000
+
 /** DM-09. 기본값은 UNKNOWN — 모르는 규칙은 검사하지 않는다. */
 enum class CharClassRule { REQUIRED, ALLOWED, FORBIDDEN, UNKNOWN }
 

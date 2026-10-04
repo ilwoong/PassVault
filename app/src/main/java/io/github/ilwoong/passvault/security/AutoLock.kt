@@ -21,7 +21,7 @@ class AutoLock(
     @Volatile
     private var externalPickerOpen = false
 
-    /** Activity.onUserInteraction. 화면을 보고만 있는 것은 상호작용이 아니다. */
+    /** Activity.onUserInteraction 과 소프트 키보드 입력. 화면을 보고만 있는 것은 상호작용이 아니다. */
     fun onInteraction() {
         lastInteraction = clocks.elapsedMs()
     }

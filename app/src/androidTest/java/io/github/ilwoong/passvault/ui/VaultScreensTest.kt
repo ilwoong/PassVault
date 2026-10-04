@@ -1,6 +1,10 @@
 package io.github.ilwoong.passvault.ui
 
 import android.view.inputmethod.EditorInfo
+import io.github.ilwoong.passvault.data.model.MAX_TITLE_LENGTH
+import io.github.ilwoong.passvault.data.model.MAX_TEXT_LENGTH
+import androidx.compose.ui.test.performTextInput
+import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
@@ -137,6 +141,22 @@ class VaultScreensTest {
     }
 
     @Test
+    fun inputBeyondTheLengthLimitIsNotAccepted() {
+        val form = EntryForm(EntryType.NOTE, null)
+        compose.setContent { EntryEditScreen(form, saving = false, failed = false, onSave = {}, onExit = {}) }
+        val title = form.fields.first { it.key == FieldKey.TITLE }
+        val body = form.fields.first { it.key == FieldKey.BODY }
+
+        compose.onNodeWithText(s(R.string.field_title)).performTextInput("t".repeat(MAX_TITLE_LENGTH))
+        compose.onNodeWithText(s(R.string.field_title)).performTextInput("x")
+        compose.runOnIdle { assertEquals(MAX_TITLE_LENGTH, title.state.text.length) }
+
+        compose.onNodeWithText(s(R.string.field_body)).performTextInput("b".repeat(MAX_TEXT_LENGTH))
+        compose.onNodeWithText(s(R.string.field_body)).performTextInput("x")
+        compose.runOnIdle { assertEquals(MAX_TEXT_LENGTH, body.state.text.length) }
+    }
+
+    @Test
     fun leavingWithChangesAsksBeforeDiscarding() {
         val form = EntryForm(EntryType.LOGIN, login)
         var exited = 0
@@ -182,6 +202,27 @@ class VaultScreensTest {
         assertTrue(info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0)
         assertTrue("기존 플래그 유지", info.imeOptions and EditorInfo.IME_FLAG_NO_FULLSCREEN != 0)
         assertEquals(EditorInfo.IME_ACTION_DONE, info.imeOptions and EditorInfo.IME_MASK_ACTION)
+    }
+
+    // --- LOCK-03 키보드 입력 ---
+
+    @Test
+    fun keyboardEditsAreReportedButReadsAreNot() {
+        var edits = 0
+        val ic = withNoPersonalizedLearning(PlatformTextInputMethodRequest { dummyConnection() }) { edits++ }
+            .createInputConnection(EditorInfo())
+
+        ic.getTextBeforeCursor(10, 0)
+        ic.beginBatchEdit()
+        ic.endBatchEdit()
+        assertEquals("읽기·배치 호출은 사용자 입력이 아니다", 0, edits)
+
+        ic.commitText("a", 1)
+        ic.setComposingText("ㅎ", 1)
+        ic.deleteSurroundingText(1, 0)
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+        ic.performEditorAction(EditorInfo.IME_ACTION_DONE)
+        assertEquals(5, edits)
     }
 
     private fun dummyConnection(): InputConnection = Proxy.newProxyInstance(
