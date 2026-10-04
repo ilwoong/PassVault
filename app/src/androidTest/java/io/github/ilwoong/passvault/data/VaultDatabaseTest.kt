@@ -70,7 +70,7 @@ class VaultDatabaseTest {
 
         val wrongKey = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val wrong = VaultDatabase.open(context, wrongKey, name)
-        val result = runCatching { wrong.dao().observeSummaries().first() }
+        val result = runCatching { wrong.dao().observeSummaries(null, null).first() }
         wrong.close()
 
         assertTrue("다른 키로 읽기가 성공하면 안 된다: $result", result.isFailure)

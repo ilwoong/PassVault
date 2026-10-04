@@ -5,6 +5,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import io.github.ilwoong.passvault.data.model.EntrySummary
+import io.github.ilwoong.passvault.data.model.EntryType
 import kotlinx.coroutines.flow.Flow
 
 /** 한 항목의 모든 행. 타입에 맞는 상세 하나만 null 이 아니다. */
@@ -27,12 +28,27 @@ class LoadedEntry(
 @Dao
 abstract class VaultDao {
 
-    /** 목록 (UX-04). entry 테이블만 읽는다 (NFR-02). */
+    /**
+     * 목록 (UX-04). entry 테이블만 읽는다 (NFR-02).
+     * [pattern] 은 이스케이프된 LIKE 패턴이고 null 이면 검색하지 않는다.
+     */
     @Query(
-        "SELECT id, type, title, subtitle, isFavorite, hasPolicyViolation, hasRotationDue FROM entry " +
-            "ORDER BY isFavorite DESC, title COLLATE NOCASE ASC",
+        """
+        SELECT id, type, title, subtitle, isFavorite, hasPolicyViolation, hasRotationDue FROM entry
+        WHERE (:type IS NULL OR type = :type)
+          AND (:pattern IS NULL OR title LIKE :pattern ESCAPE '\' OR subtitle LIKE :pattern ESCAPE '\')
+        ORDER BY isFavorite DESC, title COLLATE NOCASE ASC
+        """,
     )
-    abstract fun observeSummaries(): Flow<List<EntrySummary>>
+    abstract fun observeSummaries(type: EntryType?, pattern: String?): Flow<List<EntrySummary>>
+
+    /** 상세 화면이 저장 후 다시 읽을 신호. 저장은 항상 entry 행을 갱신한다. */
+    @Query("SELECT * FROM entry WHERE id = :id")
+    abstract fun observeEntryRow(id: String): Flow<EntryEntity?>
+
+    /** 한 행만 UPDATE 한다. REPLACE 는 CASCADE 로 상세를 지운다. */
+    @Query("UPDATE entry SET isFavorite = :favorite WHERE id = :id")
+    abstract suspend fun setFavorite(id: String, favorite: Boolean): Int
 
     @Transaction
     open suspend fun load(id: String): LoadedEntry? {

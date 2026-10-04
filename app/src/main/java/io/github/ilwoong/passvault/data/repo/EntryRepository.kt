@@ -18,6 +18,7 @@ import io.github.ilwoong.passvault.data.policy.PasswordPolicyEvaluator
 import io.github.ilwoong.passvault.data.policy.PolicyReport
 import io.github.ilwoong.passvault.security.useThenZeroize
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 /**
@@ -31,9 +32,19 @@ class EntryRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
-    fun observeSummaries(): Flow<List<EntrySummary>> = dao.observeSummaries()
+    /** UX-04. [query] 는 title·subtitle 부분 일치. */
+    fun observeSummaries(type: EntryType? = null, query: String = ""): Flow<List<EntrySummary>> =
+        dao.observeSummaries(type, query.takeIf { it.isNotEmpty() }?.let { "%${escapeLike(it)}%" })
 
     suspend fun get(id: String): Entry? = dao.load(id)?.toModel()
+
+    /** UX-05. 저장될 때마다 다시 읽는다. 지워지면 null. */
+    fun observe(id: String): Flow<Entry?> = dao.observeEntryRow(id).map { row -> row?.let { get(id) } }
+
+    /** UX-04. updatedAt 은 바꾸지 않는다 — 내용 변경이 아니다. */
+    suspend fun setFavorite(id: String, favorite: Boolean) {
+        dao.setFavorite(id, favorite)
+    }
 
     /** 저장된 항목의 id 를 돌려준다. */
     suspend fun save(draft: EntryDraft): String {
@@ -101,6 +112,10 @@ class EntryRepository(
         dao.deleteEntry(id)
     }
 }
+
+/** LIKE 의 특수 문자를 ESCAPE '\' 기준으로 이스케이프한다. */
+internal fun escapeLike(s: String): String =
+    s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 /** DM-06: 숫자만 남긴다. 남는 게 없으면 null. */
 internal fun normalizeCardNumber(number: String?): String? =

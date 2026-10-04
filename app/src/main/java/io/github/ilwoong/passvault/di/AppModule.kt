@@ -9,6 +9,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.ilwoong.passvault.data.db.VaultDatabaseHolder
+import io.github.ilwoong.passvault.data.repo.EntryRepository
 import io.github.ilwoong.passvault.security.AesGcmKeyWrapper
 import io.github.ilwoong.passvault.security.Argon2KeyDeriver
 import io.github.ilwoong.passvault.security.Clocks
@@ -40,6 +41,10 @@ object AppModule {
     @Provides
     @Singleton
     fun vaultDatabaseHolder(@ApplicationContext context: Context) = VaultDatabaseHolder(context)
+
+    /** 해제 동안에만 주입할 수 있다. 금고 분기의 ViewModel 만 쓴다 (UX-00). */
+    @Provides
+    fun entryRepository(holder: VaultDatabaseHolder) = EntryRepository(holder.requireDatabase().dao())
 
     @Provides
     @Singleton
