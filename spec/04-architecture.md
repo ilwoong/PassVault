@@ -18,8 +18,8 @@
 
 ```
 io.github.ilwoong.passvault
-├─ PassVaultApp.kt            // Application, Hilt 진입점
-├─ MainActivity.kt            // 단일 Activity. FLAG_SECURE 설정 (LOCK-06)
+├─ PassVaultApp.kt            // Application, Hilt 진입점. 화면 꺼짐 수신 (LOCK-03)
+├─ MainActivity.kt            // 단일 Activity. FLAG_SECURE (LOCK-06), 유휴 타이머 연결 (LOCK-03)
 ├─ security/                  // ← Android UI 의존 없음
 │   ├─ Argon2KeyDeriver.kt       // CRY-02, CRY-09
 │   ├─ AesGcmKeyWrapper.kt       // CRY-03
@@ -27,25 +27,32 @@ io.github.ilwoong.passvault
 │   ├─ VaultMetaStore.kt         // DM-01. 원자적 교체 책임
 │   ├─ VaultKeyManager.kt        // 생성/해제/변경 조율 (CRY-10, 11, 15)
 │   ├─ SessionManager.kt         // 상태머신 + VK 보유 (LOCK-01~04)
+│   ├─ AutoLock.kt               // LOCK-03 잠금 트리거 판정. 순수 로직
 │   ├─ Backoff.kt                // LOCK-05 대기 계산. 순수 함수
 │   ├─ Clocks.kt                 // 벽시계·단조 시계·부팅 번호 인터페이스
 │   └─ Secrets.kt                // ByteArray/CharArray 제로화 헬퍼 (SEC-12)
 ├─ data/
-│   ├─ db/                       // Room: Entity, DAO, Database, Migration
+│   ├─ model/                    // Entry, EntryContent, PasswordPolicy, 길이 상한 — 순수 코틀린
+│   ├─ db/                       // Room: Entity, DAO, Database
 │   │                            //   VaultDatabaseHolder: 해제 시 열고 잠금 시 닫는다
-│   ├─ repo/                     // EntryRepository, SettingsRepository
+│   ├─ repo/                     // EntryRepository (DM-11 쓰기 불변식)
+│   ├─ settings/                 // AppSettings (DM-02)
 │   └─ policy/                   // PasswordPolicyEvaluator (DM-10) — 순수 코틀린
-├─ backup/                    // BackupWriter, BackupReader, 포맷 정의 (07)
+├─ backup/                    // BackupCodec — .pvault 인코딩·디코딩·검증 (07)
 ├─ ui/
+│   ├─ PassVaultRoot.kt          // UX-00 세션 상태로 최상위 분기
+│   ├─ BranchScope.kt            // 분기별 ViewModel 저장소. 잠기면 비운다 (LOCK-04 4 단계)
+│   ├─ VaultNavHost.kt           // 금고 분기의 내비게이션
 │   ├─ theme/
-│   ├─ common/                   // 공용 Composable (SecretField, PolicyBadge 등)
-│   ├─ unlock/                   // UX-02, UX-03
+│   ├─ common/                   // SecureClipboard (LOCK-07), 생체 프롬프트, 입력 인터셉터 (UX-06), 정책 표시
+│   ├─ unlock/                   // UX-02
 │   ├─ onboarding/               // UX-01
 │   ├─ list/                     // UX-04
 │   ├─ detail/                   // UX-05
 │   ├─ edit/                     // UX-06, UX-07
-│   └─ settings/                 // UX-08~UX-11
-└─ di/                        // Hilt 모듈
+│   ├─ settings/                 // UX-03, UX-08~UX-10, UX-12
+│   └─ backup/                   // UX-11 내보내기·가져오기·복구 (BK-03~05)
+└─ di/                        // Hilt 모듈, Android 시계 구현
 ```
 
 ### 의존 방향 (ARC-03)
@@ -82,7 +89,7 @@ ui  →  data  →  security
 | 메타 저장 | 단일 파일 + 원자적 교체 | DM-01 (M1 에서 결정) |
 | 설정 저장 | SharedPreferences | 값 3개. DataStore 의존성을 들이지 않는다 (M7) |
 | 비동기 | Coroutines + Flow | |
-| 테스트 | JUnit, Turbine, Room testing, Compose UI test | [08](08-testing.md) |
+| 테스트 | JUnit, kotlinx-coroutines-test, AndroidX Test·Espresso, Compose UI test. JVM 백업 테스트에만 `org.json` ([07](07-backup.md)) | [08](08-testing.md). Room testing(`MigrationTestHelper`)은 스키마 버전을 처음 올릴 때 추가한다 (TST-06) |
 
 의존성 추가 기준: **비밀을 다루는 경로에는 새 의존성을 넣지 않는다.** 꼭 필요하면 스펙에 먼저 적고 이유를 남긴다.
 

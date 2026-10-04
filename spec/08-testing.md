@@ -7,8 +7,8 @@
 
 | 레이어 | 대상 | 위치 |
 |--------|------|------|
-| JVM 단위 | `data/policy`, 백업 포맷 직렬화, 상태머신 로직, 백오프 계산 | `test/` |
-| 계측 (Android) | Argon2 성능, Keystore·생체, Room+SQLCipher, 마이그레이션, DataStore 원자성 | `androidTest/` |
+| JVM 단위 | `data/policy`, 백업 포맷 직렬화, 상태머신 로직, 백오프 계산, `vault_meta` 레이아웃·원자적 교체 | `test/` |
+| 계측 (Android) | Argon2 성능, Keystore·생체, Room+SQLCipher, 마이그레이션, 세션(실제 Argon2id 위에서) | `androidTest/` |
 | Compose UI | 핵심 플로우 (해제 → 목록 → 상세 → 편집) | `androidTest/` |
 | 수기 | 생체 재등록, 기기 간 백업 복구, FLAG_SECURE 실제 확인 | 체크리스트 |
 

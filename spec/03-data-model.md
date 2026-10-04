@@ -6,7 +6,7 @@
 
 | 저장소 | 내용 | 접근 시점 | 구현 |
 |--------|------|-----------|------|
-| `vault_meta` | KDF 파라미터, 래핑된 VK, 실패 횟수 | **잠금 상태에서도** 읽어야 함 | DataStore(Proto) 또는 단일 파일. 원자적 교체 필수 (CRY-15) |
+| `vault_meta` | KDF 파라미터, 래핑된 VK, 실패 횟수 | **잠금 상태에서도** 읽어야 함 | 단일 파일(`noBackupFilesDir/vault_meta`, 188 바이트 고정). 원자적 교체 필수 (CRY-15) |
 | `vault.db` | 항목 전체 | 해제 후에만 | Room + SQLCipher ([CRY-05](02-crypto.md)) |
 | `settings` | 사용자 설정 | 항상 | SharedPreferences. 값 3개뿐이라 DataStore 의존성을 들이지 않는다 (M7) |
 
@@ -60,11 +60,13 @@ VK 길이(32B)가 바뀌면 `metaVersion` 을 올린다.
 |------|------|------|
 | `Absent` | 파일 없음 | 금고 없음 → 온보딩 ([UX-01](05-ui-flows.md)) |
 | `Present` | 크기·magic·version 모두 정상 | 해제 화면 |
-| `Corrupt` | 파일은 있는데 크기 ≠ 188, magic 불일치, 알 수 없는 version, `hasBioWrap` ∉ {0,1}, KDF 파라미터가 [CRY-09](02-crypto.md) 산출 범위 밖(m ∉ [32 MiB, 64 MiB], t ∉ [1, 8], p ≠ 2) | "금고를 열 수 없습니다" + 백업 복구 안내 ([ARC-06](04-architecture.md)) |
+| `Corrupt` | 파일은 있는데 크기 ≠ 188, magic 불일치, 알 수 없는 version, `hasBioWrap` ∉ {0,1}, KDF 파라미터가 [CRY-09](02-crypto.md) 산출 범위 밖(m ∉ [32 MiB, 64 MiB], t ∉ [3, 8], p ≠ 2) | "금고를 열 수 없습니다" + 백업 복구 안내 ([ARC-06](04-architecture.md)) |
 
 KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일은 CRY-09 캘리브레이션만이 쓰므로
 그 범위 밖의 값은 손상이다. 읽기에서 걸러야 사용자가 열 수 없는 금고에 비밀번호를 입력하게 되지 않는다
 (그렇지 않으면 비트 하나가 뒤집힌 `m` 이 수 TB 할당을 시도하다 해제 시점에야 실패한다).
+`t` 의 하한이 1 이 아니라 3 인 것도 같은 이유다 — CRY-09 는 3 에서 시작해 올리기만 한다. 기본값 3 에서 비트 하나가
+뒤집히면 1 이나 2 가 되는데, 이를 정상으로 받으면 사용자는 맞는 비밀번호를 넣고도 "비밀번호가 올바르지 않습니다"만 본다.
 
 **`Corrupt` 를 `Absent` 로 취급하면 안 된다.** 그렇게 하면 온보딩으로 빠져 새 금고를 만들면서
 기존 메타를 덮어써 데이터가 영구히 사라진다. 이 구분이 이 파일 설계에서 가장 중요한 규칙이다.
@@ -223,8 +225,10 @@ enum class CharClassRule { REQUIRED, ALLOWED, FORBIDDEN, UNKNOWN }
 순수 함수로 구현한다. Android 의존성 없이 JVM 단위 테스트가 가능해야 한다 ([TST-02](08-testing.md)).
 
 ```kotlin
-fun evaluate(password: CharArray, policy: PasswordPolicy, passwordUpdatedAt: Long?): PolicyReport
+fun evaluate(password: CharArray, policy: PasswordPolicy?, passwordUpdatedAtEpochMs: Long?, nowEpochMs: Long): PolicyReport
 ```
+
+`policy` 가 null 이면 `NotConfigured`. 현재 시각은 인자로 받는다 — 시계를 읽지 않아야 순수 함수다.
 
 `PolicyReport` 는 위반 목록이다. 위반 종류:
 

@@ -19,7 +19,7 @@
 
 ```
 오프셋  크기   내용
-  0      8    매직 "PVAULT\x00" (ASCII 6자 + 0x00 + 0x00)
+  0      8    매직 "PVAULT\x00\x00" (ASCII 6자 + 0x00 두 개)
   8      1    formatVersion = 1
   9      1    kdfId = 1 (Argon2id)
  10      4    kdfMemoryKiB   (big-endian u32)
