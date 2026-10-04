@@ -1,5 +1,6 @@
 package io.github.ilwoong.passvault.ui
 
+import io.github.ilwoong.passvault.ui.common.ScreenHeader
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,8 +65,7 @@ private fun LockedBranch(state: SessionState) {
 private fun CannotOpenScreen(onRestore: () -> Unit) {
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(stringResource(R.string.cannot_open_title), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.cannot_open_body))
+            ScreenHeader(stringResource(R.string.cannot_open_title), stringResource(R.string.cannot_open_body))
             OutlinedButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.action_restore_from_backup))
             }

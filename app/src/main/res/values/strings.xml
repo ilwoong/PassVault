@@ -259,6 +259,12 @@
     <string name="welcome_backup_body">마스터 비밀번호를 잊거나 기기를 잃어버리면 백업 파일로만 복구할 수 있습니다. 나중에 설정에서 만들 수도 있습니다.</string>
     <string name="action_backup_now">지금 백업</string>
 
+    <!-- 설정 화면의 묶음 제목 -->
+    <string name="settings_section_lock">잠금과 화면 보호</string>
+    <string name="settings_section_auth">인증</string>
+    <string name="settings_section_backup">백업</string>
+    <string name="settings_section_app">앱</string>
+
     <!-- UX-12 정보 -->
     <string name="settings_about">정보</string>
     <string name="settings_about_desc">버전, 오픈소스 라이선스</string>

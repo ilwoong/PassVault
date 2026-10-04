@@ -1,5 +1,7 @@
 package io.github.ilwoong.passvault.ui.settings
 
+import io.github.ilwoong.passvault.ui.common.BrandMark
+import io.github.ilwoong.passvault.ui.common.SectionHeader
 import androidx.annotation.RawRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -81,21 +82,15 @@ fun AboutScreen(version: String, onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             ListItem(
+                leadingContent = { BrandMark(size = 48.dp) },
                 headlineContent = { Text(stringResource(R.string.app_name)) },
                 supportingContent = { Text(stringResource(R.string.about_version, version)) },
             )
-            HorizontalDivider()
             ListItem(
                 headlineContent = { Text(stringResource(R.string.about_local_only)) },
                 supportingContent = { Text(stringResource(R.string.about_local_only_desc)) },
             )
-            HorizontalDivider()
-            Text(
-                stringResource(R.string.about_licenses),
-                Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            SectionHeader(stringResource(R.string.about_licenses))
             for (notice in OSS_NOTICES) {
                 ListItem(
                     modifier = if (notice.text != null) Modifier.clickable { open = notice } else Modifier,

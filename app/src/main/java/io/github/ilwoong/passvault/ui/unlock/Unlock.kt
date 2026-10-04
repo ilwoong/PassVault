@@ -1,5 +1,6 @@
 package io.github.ilwoong.passvault.ui.unlock
 
+import io.github.ilwoong.passvault.ui.common.ScreenHeader
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -201,7 +202,7 @@ fun UnlockScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(R.string.unlock_title), style = MaterialTheme.typography.headlineSmall)
+            ScreenHeader(stringResource(R.string.unlock_title))
             OutlinedSecureTextField(
                 state = password,
                 modifier = Modifier.fillMaxWidth(),

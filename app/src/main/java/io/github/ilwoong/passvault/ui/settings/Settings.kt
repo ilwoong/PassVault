@@ -1,5 +1,6 @@
 package io.github.ilwoong.passvault.ui.settings
 
+import io.github.ilwoong.passvault.ui.common.SectionHeader
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -247,6 +247,7 @@ fun SettingsScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             // UX-08
+            SectionHeader(stringResource(R.string.settings_section_lock))
             ListItem(
                 modifier = Modifier.clickable { choosing = Choice.AUTO_LOCK },
                 headlineContent = { Text(stringResource(R.string.settings_auto_lock)) },
@@ -254,14 +255,12 @@ fun SettingsScreen(
                     Text(stringResource(R.string.settings_auto_lock_value, durationText(lockSettings.autoLockSeconds)))
                 },
             )
-            HorizontalDivider()
             ListItem(
                 modifier = Modifier.clickable { onLockOnBackgroundChange(!lockSettings.lockOnBackground) },
                 headlineContent = { Text(stringResource(R.string.settings_lock_on_background)) },
                 supportingContent = { Text(stringResource(R.string.settings_lock_on_background_desc)) },
                 trailingContent = { Switch(checked = lockSettings.lockOnBackground, onCheckedChange = onLockOnBackgroundChange) },
             )
-            HorizontalDivider()
             // UX-09 클립보드
             ListItem(
                 modifier = Modifier.clickable { choosing = Choice.CLIPBOARD },
@@ -273,7 +272,7 @@ fun SettingsScreen(
                     )
                 },
             )
-            HorizontalDivider()
+            SectionHeader(stringResource(R.string.settings_section_auth))
             if (biometricAvailable) {
                 ListItem(
                     modifier = Modifier.clickable { onBiometricToggle(!biometricEnrolled) },
@@ -281,34 +280,31 @@ fun SettingsScreen(
                     supportingContent = { Text(stringResource(R.string.settings_biometric_desc)) },
                     trailingContent = { Switch(checked = biometricEnrolled, onCheckedChange = onBiometricToggle) },
                 )
-                HorizontalDivider()
             }
             ListItem(
                 modifier = Modifier.clickable(onClick = onChangePassword),
                 headlineContent = { Text(stringResource(R.string.settings_change_password)) },
                 supportingContent = { Text(stringResource(R.string.settings_change_password_desc)) },
             )
-            HorizontalDivider()
             // UX-11
+            SectionHeader(stringResource(R.string.settings_section_backup))
             ListItem(
                 modifier = Modifier.clickable(onClick = onBackupExport),
                 headlineContent = { Text(stringResource(R.string.settings_backup_export)) },
                 supportingContent = { Text(stringResource(R.string.settings_backup_export_desc)) },
             )
-            HorizontalDivider()
             ListItem(
                 modifier = Modifier.clickable(onClick = onBackupImport),
                 headlineContent = { Text(stringResource(R.string.settings_backup_import)) },
                 supportingContent = { Text(stringResource(R.string.settings_backup_import_desc)) },
             )
-            HorizontalDivider()
             // UX-12
+            SectionHeader(stringResource(R.string.settings_section_app))
             ListItem(
                 modifier = Modifier.clickable(onClick = onAbout),
                 headlineContent = { Text(stringResource(R.string.settings_about)) },
                 supportingContent = { Text(stringResource(R.string.settings_about_desc)) },
             )
-            HorizontalDivider()
         }
     }
 

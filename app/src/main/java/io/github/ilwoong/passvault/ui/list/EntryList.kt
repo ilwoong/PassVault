@@ -1,15 +1,22 @@
 package io.github.ilwoong.passvault.ui.list
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import io.github.ilwoong.passvault.ui.common.BrandMark
+import io.github.ilwoong.passvault.ui.common.TonalIcon
+import io.github.ilwoong.passvault.ui.common.typeIcon
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -26,13 +33,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -170,11 +175,18 @@ fun EntryListScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            OutlinedTextField(
+            TextField(
                 value = query,
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 singleLine = true,
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
                 placeholder = { Text(stringResource(R.string.search_hint)) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
@@ -196,15 +208,21 @@ fun EntryListScreen(
             }
             when {
                 entries == null -> Unit
-                entries.isEmpty() -> Text(
-                    stringResource(if (query.isEmpty() && type == null) R.string.empty_vault else R.string.empty_search),
-                    modifier = Modifier.padding(24.dp),
-                )
-                else -> LazyColumn(Modifier.fillMaxSize()) {
-                    items(entries, key = { it.id }) { e ->
-                        EntryRow(e, onOpen, onToggleFavorite)
-                        HorizontalDivider()
-                    }
+                entries.isEmpty() -> Column(
+                    Modifier.fillMaxSize().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                ) {
+                    BrandMark()
+                    Text(
+                        stringResource(if (query.isEmpty() && type == null) R.string.empty_vault else R.string.empty_search),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                // 아래 여백: 마지막 행이 추가 버튼에 가리지 않게
+                else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
+                    items(entries, key = { it.id }) { e -> EntryRow(e, onOpen, onToggleFavorite) }
                 }
             }
         }
@@ -217,9 +235,12 @@ fun EntryListScreen(
             text = {
                 Column {
                     for (t in EntryType.entries) {
-                        TextButton(onClick = { choosingType = false; onAdd(t) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(typeLabel(t))
-                        }
+                        ListItem(
+                            modifier = Modifier.clip(MaterialTheme.shapes.medium).clickable { choosingType = false; onAdd(t) },
+                            leadingContent = { TonalIcon(typeIcon(t)) },
+                            headlineContent = { Text(typeLabel(t)) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
                     }
                 }
             },
@@ -236,10 +257,10 @@ private fun EntryRow(e: EntrySummary, onOpen: (String) -> Unit, onToggleFavorite
         headlineContent = { Text(e.title) },
         supportingContent = if (e.subtitle != null || e.hasPolicyViolation || e.hasRotationDue) {
             {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     e.subtitle?.let { Text(it) }
                     // 캐시 컬럼만 읽는다 — 목록에서 비밀번호를 복호화하지 않는다 (DM-03)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (e.hasPolicyViolation || e.hasRotationDue) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (e.hasPolicyViolation) {
                             Badge(stringResource(R.string.badge_violation), MaterialTheme.colorScheme.errorContainer)
                         }
@@ -266,19 +287,13 @@ private fun EntryRow(e: EntrySummary, onOpen: (String) -> Unit, onToggleFavorite
 
 @Composable
 private fun Badge(text: String, color: Color) {
-    Surface(color = color, shape = MaterialTheme.shapes.small) {
-        Text(text, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+    Surface(color = color, shape = CircleShape) {
+        Text(text, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
     }
 }
 
 @Composable
 private fun TypeBadge(type: EntryType) {
     val label = typeLabel(type)
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier.size(40.dp).semantics { contentDescription = label },
-    ) {
-        Box(contentAlignment = Alignment.Center) { Text(label.take(1), style = MaterialTheme.typography.titleMedium) }
-    }
+    TonalIcon(typeIcon(type), modifier = Modifier.semantics { contentDescription = label })
 }

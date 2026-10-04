@@ -1,5 +1,12 @@
 package io.github.ilwoong.passvault.ui.common
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
@@ -80,7 +87,10 @@ fun PolicyVerdict(policy: PasswordPolicy?, report: PolicyReport) {
     if (policy == null || !policy.hasCheckableRule || report !is PolicyReport.Evaluated) return
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (report.violations.isEmpty()) {
-            Text(stringResource(R.string.policy_satisfied), color = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.policy_satisfied), color = MaterialTheme.colorScheme.primary)
+            }
         }
         for (v in report.violations.sortedBy { it.ordinal }) {
             Text(

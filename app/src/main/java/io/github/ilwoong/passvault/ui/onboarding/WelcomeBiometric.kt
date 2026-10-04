@@ -1,5 +1,6 @@
 package io.github.ilwoong.passvault.ui.onboarding
 
+import io.github.ilwoong.passvault.ui.common.ScreenHeader
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -64,8 +64,7 @@ fun WelcomeBiometricScreen(onEnable: () -> Unit, onLater: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(R.string.welcome_bio_title), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.welcome_bio_body))
+            ScreenHeader(stringResource(R.string.welcome_bio_title), stringResource(R.string.welcome_bio_body))
             Button(onClick = onEnable, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_enable)) }
             OutlinedButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_later)) }
         }
@@ -80,8 +79,7 @@ fun WelcomeBackupScreen(onBackupNow: () -> Unit, onLater: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(R.string.welcome_backup_title), style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.welcome_backup_body))
+            ScreenHeader(stringResource(R.string.welcome_backup_title), stringResource(R.string.welcome_backup_body))
             Button(onClick = onBackupNow, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_backup_now)) }
             OutlinedButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_later)) }
         }

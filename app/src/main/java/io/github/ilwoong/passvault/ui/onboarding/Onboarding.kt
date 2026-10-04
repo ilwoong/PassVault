@@ -1,5 +1,10 @@
 package io.github.ilwoong.passvault.ui.onboarding
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import io.github.ilwoong.passvault.ui.common.ScreenHeader
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -123,9 +128,13 @@ fun OnboardingScreen(
 
 @Composable
 private fun Intro(acknowledged: Boolean, onAcknowledgedChange: (Boolean) -> Unit, onNext: () -> Unit) {
-    Text(stringResource(R.string.onboarding_title), style = MaterialTheme.typography.headlineSmall)
-    Text(stringResource(R.string.onboarding_intro))
-    Text(stringResource(R.string.onboarding_warning), color = MaterialTheme.colorScheme.error)
+    ScreenHeader(stringResource(R.string.onboarding_title), stringResource(R.string.onboarding_intro))
+    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+            Text(stringResource(R.string.onboarding_warning), color = MaterialTheme.colorScheme.onErrorContainer)
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,7 +142,7 @@ private fun Intro(acknowledged: Boolean, onAcknowledgedChange: (Boolean) -> Unit
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = acknowledged, onCheckedChange = null)
-        Text(stringResource(R.string.onboarding_acknowledge))
+        Text(stringResource(R.string.onboarding_acknowledge), Modifier.padding(start = 12.dp))
     }
     Button(onClick = onNext, enabled = acknowledged, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.action_next))
@@ -148,7 +157,7 @@ private fun PasswordForm(failed: Boolean, onCreate: (CharArray) -> Unit) {
     val longEnough = password.text.length >= MIN_MASTER_PASSWORD_LENGTH
     val matches = password.text.contentEquals(confirm.text)
 
-    Text(stringResource(R.string.onboarding_password_title), style = MaterialTheme.typography.headlineSmall)
+    ScreenHeader(stringResource(R.string.onboarding_password_title))
     OutlinedSecureTextField(
         state = password,
         modifier = Modifier.fillMaxWidth(),

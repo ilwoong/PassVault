@@ -1,5 +1,8 @@
 package io.github.ilwoong.passvault.ui.detail
 
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.text.font.FontFamily
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -175,6 +178,7 @@ fun EntryDetailScreen(
     var confirmingDelete by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     val copiedText = stringResource(R.string.copied)
     val copiedWithClear = stringResource(R.string.copied_with_clear)
 
@@ -200,23 +204,31 @@ fun EntryDetailScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(
-            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            for (field in detailFields(entry.content)) {
-                FieldRow(
-                    field = field,
-                    revealed = revealed[field.label] == true,
-                    onToggle = { revealed[field.label] = revealed[field.label] != true },
-                    onCopy = {
-                        onCopy(field.value)
-                        val seconds = clipboardClearSeconds()
-                        val text = if (seconds > 0) copiedWithClear.format(seconds) else copiedText
-                        scope.launch { snackbar.showSnackbar(text) }
-                    },
-                )
-                HorizontalDivider()
+            val fields = detailFields(entry.content)
+            if (fields.isNotEmpty()) {
+                Card(colors = cardColors) {
+                    fields.forEachIndexed { i, field ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        FieldRow(
+                            field = field,
+                            revealed = revealed[field.label] == true,
+                            onToggle = { revealed[field.label] = revealed[field.label] != true },
+                            onCopy = {
+                                onCopy(field.value)
+                                val seconds = clipboardClearSeconds()
+                                val text = if (seconds > 0) copiedWithClear.format(seconds) else copiedText
+                                scope.launch { snackbar.showSnackbar(text) }
+                            },
+                        )
+                    }
+                }
             }
-            (entry.content as? EntryContent.Login)?.let { PolicyPanel(entry, it, nowEpochMs, onRecord = onEdit) }
+            (entry.content as? EntryContent.Login)?.let {
+                Card(colors = cardColors) { PolicyPanel(entry, it, nowEpochMs, onRecord = onEdit) }
+            }
         }
     }
 
@@ -241,8 +253,8 @@ fun EntryDetailScreen(
 private fun FieldRow(field: DetailField, revealed: Boolean, onToggle: () -> Unit, onCopy: () -> Unit) {
     val masked = field.secret && !revealed
     val stateText = stringResource(if (masked) R.string.state_hidden else R.string.state_shown)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(stringResource(field.label), style = MaterialTheme.typography.labelMedium)
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 4.dp)) {
+        Text(stringResource(field.label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 // 고정 길이로 가린다 — 길이도 정보다
@@ -251,6 +263,8 @@ private fun FieldRow(field: DetailField, revealed: Boolean, onToggle: () -> Unit
                     .weight(1f)
                     .then(if (field.secret) Modifier.semantics { stateDescription = stateText } else Modifier),
                 style = MaterialTheme.typography.bodyLarge,
+                // 드러낸 비밀은 글자를 헷갈리지 않게 고정폭으로 (l·1·I, 0·O)
+                fontFamily = if (field.secret && !masked) FontFamily.Monospace else null,
             )
             if (field.secret) {
                 TextButton(onClick = onToggle) {
@@ -266,9 +280,13 @@ private fun FieldRow(field: DetailField, revealed: Boolean, onToggle: () -> Unit
 @Composable
 private fun PolicyPanel(entry: Entry, login: EntryContent.Login, now: Long, onRecord: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.policy_section_title), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.policy_section_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
         entry.passwordUpdatedAtEpochMs?.let {
-            Text(stringResource(R.string.policy_days_since_change, ((now - it) / DAY_MS).toInt().coerceAtLeast(0)))
+            Text(
+                stringResource(R.string.policy_days_since_change, ((now - it) / DAY_MS).toInt().coerceAtLeast(0)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         val policy = login.policy
         if (policy == null) {

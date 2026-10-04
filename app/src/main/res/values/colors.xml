@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#02529F</color>
+    <!-- 첫 화면이 그려지기 전의 창 배경. Compose 테마의 surface 와 같은 색이라 시작할 때 번쩍이지 않는다. -->
+    <color name="window_background">#F8F9FF</color>
 </resources>

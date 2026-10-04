@@ -1,5 +1,6 @@
 package io.github.ilwoong.passvault
 
+import androidx.activity.enableEdgeToEdge
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.fragment.app.FragmentActivity
@@ -38,6 +39,8 @@ class MainActivity : FragmentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
         )
         super.onCreate(savedInstanceState)
+        // 시스템 바 뒤까지 그리고, 바의 아이콘 색을 밝은·어두운 테마에 맞춘다
+        enableEdgeToEdge()
         setContent {
             PassVaultTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
