@@ -8,7 +8,7 @@
 |--------|------|-----------|------|
 | `vault_meta` | KDF 파라미터, 래핑된 VK, 실패 횟수 | **잠금 상태에서도** 읽어야 함 | DataStore(Proto) 또는 단일 파일. 원자적 교체 필수 (CRY-15) |
 | `vault.db` | 항목 전체 | 해제 후에만 | Room + SQLCipher ([CRY-05](02-crypto.md)) |
-| `settings` | 사용자 설정 | 항상 | DataStore Preferences |
+| `settings` | 사용자 설정 | 항상 | SharedPreferences. 값 3개뿐이라 DataStore 의존성을 들이지 않는다 (M7) |
 
 ### DM-01 `vault_meta` 스키마
 
@@ -92,12 +92,16 @@ KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일�
 ### DM-02 설정 스키마
 
 ```
-autoLockSeconds: Int        // 기본 60. 허용: 15 / 30 / 60 / 300 / 0(즉시)
+autoLockSeconds: Int        // 기본 60. 허용: 15 / 30 / 60 / 300
+                            // "즉시(0)" 는 두지 않는다 — 포그라운드 유휴 타이머에 즉시는 의미가 없고,
+                            // 백그라운드 즉시 잠금은 lockOnBackground 가 맡는다 (M7)
 lockOnBackground: Boolean   // 기본 true
 // biometricEnabled 는 저장하지 않는다 — vault_meta 의 wrappedVkByBio 유무에서 파생한다 (M6).
 // 따로 저장하면 둘이 어긋날 수 있고, DM-11 5 번 규칙이 그 경우를 다뤄야 한다. 파생하면 어긋날 수 없다.
-clipboardClearSeconds: Int  // 기본 30. 0 = 자동 삭제 안 함
+clipboardClearSeconds: Int  // 기본 30. 허용: 0(자동 삭제 안 함) / 15 / 30 / 60
 ```
+
+허용 목록 밖의 값이 읽히면 기본값으로 본다.
 
 ## 항목 모델
 

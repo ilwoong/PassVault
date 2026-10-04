@@ -79,7 +79,8 @@ ui  →  data  →  security
 | DB 암호화 | SQLCipher for Android | Room의 `openHelperFactory` 에 연결. 현행 아티팩트 좌표는 구현 시 확인 (`net.zetetic:sqlcipher-android` 계열) |
 | Argon2 | Argon2 JNI 바인딩 (예: `argon2kt`) | 순수 JVM 구현은 성능이 부족하다. ABI 4종(arm64/armeabi-v7a/x86/x86_64) 포함 여부 확인 |
 | 생체 | `androidx.biometric` | |
-| 메타·설정 저장 | DataStore (Proto / Preferences) | |
+| 메타 저장 | 단일 파일 + 원자적 교체 | DM-01 (M1 에서 결정) |
+| 설정 저장 | SharedPreferences | 값 3개. DataStore 의존성을 들이지 않는다 (M7) |
 | 비동기 | Coroutines + Flow | |
 | 테스트 | JUnit, Turbine, Room testing, Compose UI test | [08](08-testing.md) |
 
