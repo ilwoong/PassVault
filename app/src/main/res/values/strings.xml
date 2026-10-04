@@ -200,4 +200,16 @@
     <string name="welcome_bio_body">매번 마스터 비밀번호를 입력하지 않고 지문·얼굴로 금고를 열 수 있습니다. 나중에 설정에서 켤 수도 있습니다.</string>
     <string name="action_enable">켜기</string>
     <string name="action_later">나중에</string>
+    <!-- LOCK-07 / UX-08 -->
+    <string name="copied_with_clear">복사했습니다. %1$d초 후 클립보드에서 지웁니다</string>
+    <string name="settings_auto_lock">자동 잠금</string>
+    <string name="settings_auto_lock_value">사용하지 않으면 %1$s 뒤 잠급니다</string>
+    <string name="settings_lock_on_background">앱을 떠나면 바로 잠그기</string>
+    <string name="settings_lock_on_background_desc">끄면 위 시간이 지난 뒤에 잠급니다</string>
+    <string name="settings_clipboard">클립보드 자동 삭제</string>
+    <string name="settings_clipboard_value">복사한 값을 %1$s 뒤 지웁니다</string>
+    <string name="settings_clipboard_off">자동으로 지우지 않습니다</string>
+    <string name="duration_seconds">%1$d초</string>
+    <string name="duration_minutes">%1$d분</string>
+    <string name="option_never">사용 안 함</string>
 </resources>

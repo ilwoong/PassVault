@@ -2,6 +2,16 @@ package io.github.ilwoong.passvault.ui.settings
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.ilwoong.passvault.data.settings.AppSettings
+import io.github.ilwoong.passvault.data.settings.LockSettings
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,7 +73,15 @@ enum class SettingsEvent { BIO_ENABLED, BIO_DISABLED, BIO_FAILED }
 class SettingsViewModel @Inject constructor(
     private val session: SessionManager,
     private val enroller: BiometricEnroller,
+    private val settings: AppSettings,
 ) : ViewModel() {
+
+    /** UX-08, UX-09 */
+    val lockSettings: StateFlow<LockSettings> = settings.state
+
+    fun setAutoLockSeconds(value: Int) = settings.setAutoLockSeconds(value)
+    fun setLockOnBackground(value: Boolean) = settings.setLockOnBackground(value)
+    fun setClipboardClearSeconds(value: Int) = settings.setClipboardClearSeconds(value)
 
     /** CRY-14: 기기에 Class 3 생체가 없으면 항목 자체를 보여주지 않는다. */
     val biometricAvailable: Boolean = enroller.isAvailable
@@ -137,6 +155,7 @@ fun SettingsRoute(onBack: () -> Unit, onChangePassword: () -> Unit, vm: Settings
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.bio_prompt_enroll_title)
     val negative = stringResource(R.string.action_cancel)
+    val lockSettings by vm.lockSettings.collectAsStateWithLifecycle()
     SettingsScreen(
         biometricAvailable = vm.biometricAvailable,
         biometricEnrolled = vm.biometricEnrolled,
@@ -154,6 +173,10 @@ fun SettingsRoute(onBack: () -> Unit, onChangePassword: () -> Unit, vm: Settings
         },
         onReauthDismiss = vm::dismissReauth,
         onChangePassword = onChangePassword,
+        lockSettings = lockSettings,
+        onAutoLockChange = vm::setAutoLockSeconds,
+        onLockOnBackgroundChange = vm::setLockOnBackground,
+        onClipboardChange = vm::setClipboardClearSeconds,
     )
 }
 
@@ -173,8 +196,13 @@ fun SettingsScreen(
     onReauthSubmit: (CharArray) -> Unit,
     onReauthDismiss: () -> Unit,
     onChangePassword: () -> Unit,
+    lockSettings: LockSettings = LockSettings(),
+    onAutoLockChange: (Int) -> Unit = {},
+    onLockOnBackgroundChange: (Boolean) -> Unit = {},
+    onClipboardChange: (Int) -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
+    var choosing by remember { mutableStateOf<Choice?>(null) }
     val eventText = event?.let {
         stringResource(
             when (it) {
@@ -205,6 +233,34 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+            // UX-08
+            ListItem(
+                modifier = Modifier.clickable { choosing = Choice.AUTO_LOCK },
+                headlineContent = { Text(stringResource(R.string.settings_auto_lock)) },
+                supportingContent = {
+                    Text(stringResource(R.string.settings_auto_lock_value, durationText(lockSettings.autoLockSeconds)))
+                },
+            )
+            HorizontalDivider()
+            ListItem(
+                modifier = Modifier.clickable { onLockOnBackgroundChange(!lockSettings.lockOnBackground) },
+                headlineContent = { Text(stringResource(R.string.settings_lock_on_background)) },
+                supportingContent = { Text(stringResource(R.string.settings_lock_on_background_desc)) },
+                trailingContent = { Switch(checked = lockSettings.lockOnBackground, onCheckedChange = onLockOnBackgroundChange) },
+            )
+            HorizontalDivider()
+            // UX-09 클립보드
+            ListItem(
+                modifier = Modifier.clickable { choosing = Choice.CLIPBOARD },
+                headlineContent = { Text(stringResource(R.string.settings_clipboard)) },
+                supportingContent = {
+                    Text(
+                        if (lockSettings.clipboardClearSeconds == 0) stringResource(R.string.settings_clipboard_off)
+                        else stringResource(R.string.settings_clipboard_value, durationText(lockSettings.clipboardClearSeconds)),
+                    )
+                },
+            )
+            HorizontalDivider()
             if (biometricAvailable) {
                 ListItem(
                     modifier = Modifier.clickable { onBiometricToggle(!biometricEnrolled) },
@@ -224,6 +280,66 @@ fun SettingsScreen(
     }
 
     if (reauthOpen) ReauthDialog(reauthMessage, reauthLockoutMs, onReauthSubmit, onReauthDismiss)
+
+    when (choosing) {
+        Choice.AUTO_LOCK -> OptionDialog(
+            title = stringResource(R.string.settings_auto_lock),
+            options = LockSettings.AUTO_LOCK_OPTIONS,
+            selected = lockSettings.autoLockSeconds,
+            label = { durationText(it) },
+            onSelect = { onAutoLockChange(it); choosing = null },
+            onDismiss = { choosing = null },
+        )
+        Choice.CLIPBOARD -> OptionDialog(
+            title = stringResource(R.string.settings_clipboard),
+            options = LockSettings.CLIPBOARD_OPTIONS,
+            selected = lockSettings.clipboardClearSeconds,
+            label = { if (it == 0) stringResource(R.string.option_never) else durationText(it) },
+            onSelect = { onClipboardChange(it); choosing = null },
+            onDismiss = { choosing = null },
+        )
+        null -> Unit
+    }
+}
+
+private enum class Choice { AUTO_LOCK, CLIPBOARD }
+
+@Composable
+private fun durationText(seconds: Int): String =
+    if (seconds >= 60 && seconds % 60 == 0) stringResource(R.string.duration_minutes, seconds / 60)
+    else stringResource(R.string.duration_seconds, seconds)
+
+@Composable
+private fun OptionDialog(
+    title: String,
+    options: List<Int>,
+    selected: Int,
+    label: @Composable (Int) -> String,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                for (option in options) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = option == selected, role = Role.RadioButton, onClick = { onSelect(option) })
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = option == selected, onClick = null)
+                        Text(label(option), Modifier.padding(start = 12.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 /** UX-03. 비밀번호는 저장되지 않는 상태에만 둔다 (UX-00b). */

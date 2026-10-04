@@ -65,10 +65,17 @@ class SessionManager(
         check(_state.value == SessionState.NoVault) { "금고가 이미 있다" }
         _state.value = SessionState.Creating
         try {
-            withContext(kdfDispatcher) { openSession(keyManager.createVault(password)) }
-            justCreated = true
+            withContext(kdfDispatcher) {
+                val key = keyManager.createVault(password)
+                // 상태가 Unlocked 로 바뀌는 순간 금고 화면이 읽는다 — 그 전에 세워 둔다 (UX-01 4 단계)
+                justCreated = true
+                openSession(key)
+            }
         } finally {
-            if (_state.value != SessionState.Unlocked) _state.value = stateFromDisk()
+            if (_state.value != SessionState.Unlocked) {
+                justCreated = false
+                _state.value = stateFromDisk()
+            }
         }
     }
 

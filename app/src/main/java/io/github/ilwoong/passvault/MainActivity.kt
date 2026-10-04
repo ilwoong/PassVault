@@ -8,7 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.ilwoong.passvault.security.AutoLock
 import io.github.ilwoong.passvault.security.SessionManager
+import io.github.ilwoong.passvault.security.SessionState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import io.github.ilwoong.passvault.ui.PassVaultRoot
 import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
 import javax.inject.Inject
@@ -19,6 +26,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var session: SessionManager
+
+    @Inject
+    lateinit var autoLock: AutoLock
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // LOCK-06: 스크린샷·화면 녹화·최근앱 미리보기 차단.
@@ -35,5 +45,33 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // LOCK-03: 해제 순간을 유휴 시작점으로 삼는다
+                launch { session.state.collect { if (it == SessionState.Unlocked) autoLock.onUnlocked() } }
+                // 포그라운드 유휴 타이머
+                while (true) {
+                    delay(1_000)
+                    autoLock.tick()
+                }
+            }
+        }
+    }
+
+    /** LOCK-03: 터치·키 입력은 Compose 입력을 포함해 모두 여기를 지난다. */
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        autoLock.onInteraction()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        autoLock.onForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // 화면 회전 등 구성 변경은 백그라운드 전환이 아니다
+        if (!isChangingConfigurations) autoLock.onBackground()
     }
 }

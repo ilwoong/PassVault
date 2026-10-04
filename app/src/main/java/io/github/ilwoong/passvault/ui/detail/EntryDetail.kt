@@ -73,6 +73,10 @@ class EntryDetailViewModel @Inject constructor(
     private val repo: EntryRepository,
     private val clipboard: SecureClipboard,
 ) : ViewModel() {
+    /** UX-05 안내에 쓸 자동 삭제 초. 복사 후 갱신된다. */
+    var clipboardClearSeconds by mutableStateOf(0)
+        private set
+
     private val id: String = checkNotNull(savedState["id"])
 
     /** 저장될 때마다 다시 읽는다 (수정 후 돌아왔을 때). 복호화된 값은 이 ViewModel 수명 동안만 있다. */
@@ -80,7 +84,9 @@ class EntryDetailViewModel @Inject constructor(
         .map { if (it == null) DetailState.Gone else DetailState.Loaded(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailState.Loading)
 
-    fun copy(value: String) = clipboard.copy(value)
+    fun copy(value: String) {
+        clipboardClearSeconds = clipboard.copy(value)
+    }
 
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
@@ -106,6 +112,7 @@ fun EntryDetailRoute(
             onEdit = { onEdit(s.entry.id) },
             onDelete = { vm.delete(onBack) },
             onCopy = vm::copy,
+            clipboardClearSeconds = { vm.clipboardClearSeconds },
         )
     }
 }
@@ -161,6 +168,7 @@ fun EntryDetailScreen(
     onDelete: () -> Unit,
     onCopy: (String) -> Unit,
     nowEpochMs: Long = System.currentTimeMillis(),
+    clipboardClearSeconds: () -> Int = { 0 },
 ) {
     // 표시 상태는 저장하지 않는다 — 화면을 떠나면 다시 가려진다 (UX-05, UX-00b)
     val revealed = remember { mutableStateMapOf<Int, Boolean>() }
@@ -168,6 +176,7 @@ fun EntryDetailScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val copiedText = stringResource(R.string.copied)
+    val copiedWithClear = stringResource(R.string.copied_with_clear)
 
     Scaffold(
         topBar = {
@@ -200,7 +209,9 @@ fun EntryDetailScreen(
                     onToggle = { revealed[field.label] = revealed[field.label] != true },
                     onCopy = {
                         onCopy(field.value)
-                        scope.launch { snackbar.showSnackbar(copiedText) }
+                        val seconds = clipboardClearSeconds()
+                        val text = if (seconds > 0) copiedWithClear.format(seconds) else copiedText
+                        scope.launch { snackbar.showSnackbar(text) }
                     },
                 )
                 HorizontalDivider()

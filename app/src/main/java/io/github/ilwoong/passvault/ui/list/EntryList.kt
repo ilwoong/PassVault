@@ -62,6 +62,7 @@ import io.github.ilwoong.passvault.data.model.EntrySummary
 import io.github.ilwoong.passvault.data.model.EntryType
 import io.github.ilwoong.passvault.data.repo.EntryRepository
 import io.github.ilwoong.passvault.security.SessionManager
+import io.github.ilwoong.passvault.ui.common.SecureClipboard
 import io.github.ilwoong.passvault.ui.common.typeLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,6 +78,7 @@ import javax.inject.Inject
 class EntryListViewModel @Inject constructor(
     private val repo: EntryRepository,
     private val session: SessionManager,
+    private val clipboard: SecureClipboard,
 ) : ViewModel() {
 
     val query = MutableStateFlow("")
@@ -97,8 +99,11 @@ class EntryListViewModel @Inject constructor(
         viewModelScope.launch { repo.setFavorite(id, favorite) }
     }
 
-    /** LOCK-03 수동 잠금 */
-    fun lock() = session.lock()
+    /** LOCK-03 수동 잠금. "끝냈다"는 신호이므로 클립보드도 지운다 (LOCK-04 6). */
+    fun lock() {
+        session.lock()
+        clipboard.clearIfOurs()
+    }
 }
 
 @Composable
