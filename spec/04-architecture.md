@@ -18,7 +18,7 @@
 
 ```
 io.github.ilwoong.passvault
-├─ PassVaultApp.kt            // Application, Hilt 진입점. 화면 꺼짐 수신 (LOCK-03)
+├─ PassVaultApp.kt            // Application, Hilt 진입점. 화면 꺼짐 수신, 해제 시 유휴 시작점 설정 (LOCK-03)
 ├─ MainActivity.kt            // 단일 Activity. FLAG_SECURE (LOCK-06), 유휴 타이머 연결 (LOCK-03)
 ├─ security/                  // ← Android UI 의존 없음
 │   ├─ Argon2KeyDeriver.kt       // CRY-02, CRY-09

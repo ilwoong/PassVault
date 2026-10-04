@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.ilwoong.passvault.security.AutoLock
 import io.github.ilwoong.passvault.security.SessionManager
-import io.github.ilwoong.passvault.security.SessionState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -50,8 +49,6 @@ class MainActivity : FragmentActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // LOCK-03: 해제 순간을 유휴 시작점으로 삼는다
-                launch { session.state.collect { if (it == SessionState.Unlocked) autoLock.onUnlocked() } }
                 // 포그라운드 유휴 타이머
                 while (true) {
                     delay(1_000)
