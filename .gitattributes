@@ -9,3 +9,4 @@
 *.keystore binary
 *.jks binary
 *.png binary
+*.pvault binary
