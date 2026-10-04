@@ -18,6 +18,12 @@ class VaultMeta(
     val lockoutBootCount: Int = 0,
     val lockoutUntilElapsedMs: Long = 0,
 ) {
+    /** CRY-12 생체 래핑만 바꾼 사본. */
+    fun withBiometricWrap(blob: ByteArray?) = VaultMeta(
+        kdfSalt, kdfParams, wrappedVkByMk, blob,
+        failedAttempts, lockoutUntilEpochMs, vaultCreatedAtEpochMs, lockoutBootCount, lockoutUntilElapsedMs,
+    )
+
     /** LOCK-05 실패 상태만 바꾼 사본. */
     fun withLockout(failedAttempts: Int, untilEpochMs: Long, bootCount: Int, untilElapsedMs: Long) = VaultMeta(
         kdfSalt, kdfParams, wrappedVkByMk, wrappedVkByBio,

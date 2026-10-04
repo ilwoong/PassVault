@@ -12,6 +12,7 @@ import io.github.ilwoong.passvault.data.db.VaultDatabaseHolder
 import io.github.ilwoong.passvault.data.repo.EntryRepository
 import io.github.ilwoong.passvault.security.AesGcmKeyWrapper
 import io.github.ilwoong.passvault.security.Argon2KeyDeriver
+import io.github.ilwoong.passvault.security.BiometricKeyStore
 import io.github.ilwoong.passvault.security.Clocks
 import io.github.ilwoong.passvault.security.SessionManager
 import io.github.ilwoong.passvault.security.VaultKeyManager
@@ -37,6 +38,10 @@ object AppModule {
     @Singleton
     fun vaultKeyManager(store: VaultMetaStore, clocks: Clocks) =
         VaultKeyManager(store, Argon2KeyDeriver(), AesGcmKeyWrapper(), clocks)
+
+    @Provides
+    @Singleton
+    fun biometricKeyStore(@ApplicationContext context: Context) = BiometricKeyStore(context)
 
     @Provides
     @Singleton

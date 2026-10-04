@@ -163,4 +163,41 @@
     <!-- UX-04 배지 -->
     <string name="badge_violation">규칙 위반</string>
     <string name="badge_rotation">변경 필요</string>
+    <!-- CRY-13 생체 해제 -->
+    <string name="action_unlock_biometric">생체 인증으로 해제</string>
+    <string name="bio_prompt_title">PassVault 잠금 해제</string>
+    <string name="bio_prompt_enroll_title">생체 인증 등록</string>
+    <string name="bio_prompt_negative">비밀번호 사용</string>
+    <string name="bio_invalidated">생체 정보가 변경되어 생체 해제가 꺼졌습니다. 비밀번호로 해제하세요.</string>
+
+    <!-- 설정 -->
+    <string name="settings_title">설정</string>
+    <string name="cd_settings">설정</string>
+    <string name="settings_biometric">생체 인증으로 잠금 해제</string>
+    <string name="settings_biometric_desc">켜려면 마스터 비밀번호를 다시 입력해야 합니다.</string>
+    <string name="settings_change_password">마스터 비밀번호 변경</string>
+    <string name="settings_change_password_desc">변경하면 생체 해제는 꺼집니다.</string>
+    <string name="bio_enabled">생체 해제를 켰습니다</string>
+    <string name="bio_disabled">생체 해제를 껐습니다</string>
+    <string name="bio_enroll_failed">생체 등록을 완료하지 못했습니다</string>
+
+    <!-- UX-03 재인증 -->
+    <string name="reauth_title">마스터 비밀번호 확인</string>
+    <string name="reauth_body">계속하려면 마스터 비밀번호를 입력하세요.</string>
+    <string name="action_confirm">확인</string>
+
+    <!-- UX-10 비밀번호 변경 -->
+    <string name="label_current_password">현재 비밀번호</string>
+    <string name="label_new_password">새 비밀번호</string>
+    <string name="label_confirm_new_password">새 비밀번호 확인</string>
+    <string name="action_change">변경</string>
+    <string name="changing_password">변경 중입니다. 몇 초 걸릴 수 있습니다.</string>
+    <string name="password_changed">마스터 비밀번호를 변경했습니다.</string>
+    <string name="password_changed_bio">마스터 비밀번호를 변경했습니다. 생체 해제가 꺼졌으니 설정에서 다시 켜세요.</string>
+
+    <!-- UX-01 4 단계 -->
+    <string name="welcome_bio_title">생체 인증으로 잠금 해제를 켤까요?</string>
+    <string name="welcome_bio_body">매번 마스터 비밀번호를 입력하지 않고 지문·얼굴로 금고를 열 수 있습니다. 나중에 설정에서 켤 수도 있습니다.</string>
+    <string name="action_enable">켜기</string>
+    <string name="action_later">나중에</string>
 </resources>

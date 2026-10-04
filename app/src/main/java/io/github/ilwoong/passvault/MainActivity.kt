@@ -2,7 +2,7 @@ package io.github.ilwoong.passvault
 
 import android.os.Bundle
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -13,8 +13,9 @@ import io.github.ilwoong.passvault.ui.PassVaultRoot
 import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
 import javax.inject.Inject
 
+/** BiometricPrompt 가 FragmentActivity 를 요구한다 (CRY-13). */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var session: SessionManager

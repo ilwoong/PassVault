@@ -72,6 +72,8 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.argon2kt)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
 
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)

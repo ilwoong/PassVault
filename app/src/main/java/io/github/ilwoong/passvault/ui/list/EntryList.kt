@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -104,6 +105,7 @@ class EntryListViewModel @Inject constructor(
 fun EntryListRoute(
     onOpen: (String) -> Unit,
     onAdd: (EntryType) -> Unit,
+    onSettings: () -> Unit,
     vm: EntryListViewModel = hiltViewModel(),
 ) {
     // UX-07: 목록이 시작될 때마다 (해제 직후, 상세에서 돌아올 때, 포그라운드 복귀)
@@ -121,6 +123,7 @@ fun EntryListRoute(
         onToggleFavorite = vm::toggleFavorite,
         onAdd = onAdd,
         onLock = vm::lock,
+        onSettings = onSettings,
     )
 }
 
@@ -137,6 +140,7 @@ fun EntryListScreen(
     onToggleFavorite: (String, Boolean) -> Unit,
     onAdd: (EntryType) -> Unit,
     onLock: () -> Unit,
+    onSettings: () -> Unit = {},
 ) {
     var choosingType by remember { mutableStateOf(false) }
 
@@ -145,6 +149,9 @@ fun EntryListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.cd_settings))
+                    }
                     IconButton(onClick = onLock) {
                         Icon(Icons.Filled.Lock, contentDescription = stringResource(R.string.cd_lock))
                     }

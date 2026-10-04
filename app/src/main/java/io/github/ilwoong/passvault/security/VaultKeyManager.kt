@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.security.SecureRandom
 
 sealed interface UnlockResult {
-    /** [vaultKey] 는 호출자 소유다. M3 에서 SessionManager 가 넘겨받는다 (LOCK-02). */
+    /** [vaultKey] 는 호출자 소유다. SessionManager 가 넘겨받는다 (LOCK-02). */
     class Success(val vaultKey: ByteArray) : UnlockResult
 
     /** GCM 태그 실패. 비밀번호 오류와 메타 변조를 구분하지 않는다 (CRY-11). */
@@ -17,7 +17,7 @@ sealed interface UnlockResult {
 }
 
 /**
- * CRY-10 금고 생성, CRY-11 잠금 해제, LOCK-05 실패 백오프.
+ * CRY-10 금고 생성, CRY-11 잠금 해제, CRY-12 생체 래핑 저장, CRY-15 비밀번호 변경, LOCK-05 실패 백오프.
  *
  * [CharArray] 비밀번호는 호출자 소유이며 호출자가 지운다. 메서드는 수 초 걸릴 수 있다 (ARC-05).
  */
@@ -48,16 +48,11 @@ class VaultKeyManager(
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
         val vaultKey = ByteArray(KEY_BYTES).also(random::nextBytes)
         try {
-            val wrapped = password.toUtf8Bytes().useThenZeroize { pw ->
-                deriver.derive(pw, salt, params).useThenZeroize { mk ->
-                    wrapper.wrap(mk, vaultKey, aadFor(params))
-                }
-            }
             metaStore.write(
                 VaultMeta(
                     kdfSalt = salt,
                     kdfParams = params,
-                    wrappedVkByMk = wrapped,
+                    wrappedVkByMk = wrapWithPassword(password, salt, params, vaultKey),
                     wrappedVkByBio = null,
                     failedAttempts = 0,
                     lockoutUntilEpochMs = 0,
@@ -75,7 +70,7 @@ class VaultKeyManager(
      * CRY-11. 검증용 해시를 따로 두지 않는다 — GCM 태그가 유일한 검증 수단이다.
      *
      * LOCK-05: 대기 중이면 KDF 를 실행하지 않는다. 실패하면 실패 상태를 원자적으로 기록하고,
-     * 성공하면 초기화한다.
+     * 성공하면 초기화한다. 재인증(UX-03)과 비밀번호 변경도 이 경로를 쓴다.
      */
     fun unlock(password: CharArray): UnlockResult {
         val meta = when (val read = metaStore.read()) {
@@ -94,16 +89,71 @@ class VaultKeyManager(
             metaStore.write(meta.afterFailedUnlock(clocks))
             return UnlockResult.WrongPassword
         }
-        if (meta.hasFailureState) {
-            try {
-                metaStore.write(meta.afterSuccessfulUnlock())
-            } catch (e: Throwable) {
-                vaultKey.zeroize()
-                throw e
-            }
+        try {
+            clearFailureState(meta)
+        } catch (e: Throwable) {
+            vaultKey.zeroize()
+            throw e
         }
         return UnlockResult.Success(vaultKey)
     }
+
+    /** CRY-13 6 단계: 생체 해제도 성공한 해제다. */
+    fun recordSuccessfulUnlock() {
+        (metaStore.read() as? MetaReadResult.Present)?.let { clearFailureState(it.meta) }
+    }
+
+    /** CRY-12. iv(12) || ct || tag(16). null 이면 생체 해제가 설정되지 않았다. */
+    fun biometricWrap(): ByteArray? = (metaStore.read() as? MetaReadResult.Present)?.meta?.wrappedVkByBio
+
+    /** CRY-12 5 단계 / CRY-13 4 단계. null 이면 생체 해제를 끈다. */
+    fun setBiometricWrap(blob: ByteArray?) {
+        val meta = (metaStore.read() as? MetaReadResult.Present)?.meta ?: error("금고가 없다")
+        metaStore.write(meta.withBiometricWrap(blob))
+    }
+
+    /**
+     * CRY-15. 현재 비밀번호로 VK 를 풀고(LOCK-05 적용), 새 salt·재캘리브레이션 파라미터로 다시 감싼다.
+     * 생체 래핑은 폐기한다. DB 는 VK 가 그대로라 손대지 않는다. 메타는 원자적으로 교체된다.
+     *
+     * @return 성공하면 null, 실패하면 그 이유 (Success 는 돌려주지 않는다).
+     */
+    fun changePassword(current: CharArray, new: CharArray): UnlockResult? {
+        val vaultKey = when (val r = unlock(current)) {
+            is UnlockResult.Success -> r.vaultKey
+            else -> return r
+        }
+        try {
+            val meta = (metaStore.read() as MetaReadResult.Present).meta
+            val params = deriver.calibrate()
+            val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
+            metaStore.write(
+                VaultMeta(
+                    kdfSalt = salt,
+                    kdfParams = params,
+                    wrappedVkByMk = wrapWithPassword(new, salt, params, vaultKey),
+                    wrappedVkByBio = null,
+                    failedAttempts = 0,
+                    lockoutUntilEpochMs = 0,
+                    vaultCreatedAtEpochMs = meta.vaultCreatedAtEpochMs,
+                ),
+            )
+        } finally {
+            vaultKey.zeroize()
+        }
+        return null
+    }
+
+    private fun clearFailureState(meta: VaultMeta) {
+        if (meta.hasFailureState) metaStore.write(meta.afterSuccessfulUnlock())
+    }
+
+    private fun wrapWithPassword(password: CharArray, salt: ByteArray, params: KdfParams, vaultKey: ByteArray): ByteArray =
+        password.toUtf8Bytes().useThenZeroize { pw ->
+            deriver.derive(pw, salt, params).useThenZeroize { mk ->
+                wrapper.wrap(mk, vaultKey, aadFor(params))
+            }
+        }
 }
 
 /** CRY-03: ASCII "pv:vk:v1" || m || t || p (u32 BE). */
