@@ -43,7 +43,30 @@ class VaultKeyManager(
      */
     fun createVault(password: CharArray): ByteArray {
         check(metaStore.read() == MetaReadResult.Absent) { "vault_meta 가 이미 있다. 덮어쓰지 않는다" }
+        return newVault(password)
+    }
 
+    /**
+     * BK-05: [createVault] 의 Absent 가드에 대한 유일한 예외. 기존 메타를 원자적으로 덮어쓴다.
+     * 백업 파일 복호화가 성공한 뒤에만 부른다 — 순서를 바꾸면 복구 실패 시 데이터가 전부 사라진다.
+     */
+    fun recreateVault(password: CharArray): ByteArray = newVault(password)
+
+    /**
+     * BK-03: 이 비밀번호가 마스터 비밀번호와 같은지. **해제 시도가 아니므로 LOCK-05 실패 횟수에 넣지 않는다.**
+     */
+    fun matchesMasterPassword(password: CharArray): Boolean {
+        val meta = (metaStore.read() as? MetaReadResult.Present)?.meta ?: return false
+        val key = password.toUtf8Bytes().useThenZeroize { pw ->
+            deriver.derive(pw, meta.kdfSalt, meta.kdfParams).useThenZeroize { mk ->
+                wrapper.unwrap(mk, meta.wrappedVkByMk, aadFor(meta.kdfParams))
+            }
+        }
+        key?.zeroize()
+        return key != null
+    }
+
+    private fun newVault(password: CharArray): ByteArray {
         val params = deriver.calibrate()
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
         val vaultKey = ByteArray(KEY_BYTES).also(random::nextBytes)

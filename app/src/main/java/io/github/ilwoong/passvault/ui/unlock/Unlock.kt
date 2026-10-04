@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -145,7 +146,7 @@ class UnlockViewModel @Inject constructor(
 }
 
 @Composable
-fun UnlockRoute(unlocking: Boolean, vm: UnlockViewModel = hiltViewModel()) {
+fun UnlockRoute(unlocking: Boolean, onRestore: () -> Unit = {}, vm: UnlockViewModel = hiltViewModel()) {
     val activity = LocalActivity.current as FragmentActivity
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.bio_prompt_title)
@@ -165,10 +166,11 @@ fun UnlockRoute(unlocking: Boolean, vm: UnlockViewModel = hiltViewModel()) {
         onUnlock = vm::unlock,
         biometricOffered = vm.biometricOffered,
         onBiometric = startBiometric,
+        onRestore = onRestore,
     )
 }
 
-/** UX-02. 백업 복구 진입점은 M8 에서 붙는다. */
+/** UX-02 */
 @Composable
 fun UnlockScreen(
     unlocking: Boolean,
@@ -177,6 +179,7 @@ fun UnlockScreen(
     onUnlock: (CharArray) -> Unit,
     biometricOffered: Boolean = false,
     onBiometric: () -> Unit = {},
+    onRestore: () -> Unit = {},
 ) {
     // UX-00b: 저장 상태에 넣지 않는다
     val password = remember { TextFieldState() }
@@ -227,6 +230,10 @@ fun UnlockScreen(
                 OutlinedButton(onClick = onBiometric, enabled = !unlocking, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.action_unlock_biometric))
                 }
+            }
+            // 금고를 열 수 없는 사용자의 유일한 출구다 (BK-05)
+            TextButton(onClick = onRestore, enabled = !unlocking, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.action_restore_from_backup))
             }
         }
     }

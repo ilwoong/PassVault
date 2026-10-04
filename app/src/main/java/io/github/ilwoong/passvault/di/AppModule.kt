@@ -8,6 +8,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.github.ilwoong.passvault.backup.BackupCodec
 import io.github.ilwoong.passvault.data.db.VaultDatabaseHolder
 import io.github.ilwoong.passvault.data.settings.AppSettings
 import io.github.ilwoong.passvault.data.repo.EntryRepository
@@ -43,8 +44,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun vaultKeyManager(store: VaultMetaStore, clocks: Clocks) =
-        VaultKeyManager(store, Argon2KeyDeriver(), AesGcmKeyWrapper(), clocks)
+    fun argon2KeyDeriver() = Argon2KeyDeriver()
+
+    @Provides
+    @Singleton
+    fun vaultKeyManager(store: VaultMetaStore, deriver: Argon2KeyDeriver, clocks: Clocks) =
+        VaultKeyManager(store, deriver, AesGcmKeyWrapper(), clocks)
+
+    /** BK-01 */
+    @Provides
+    @Singleton
+    fun backupCodec(deriver: Argon2KeyDeriver) = BackupCodec(deriver::derive)
 
     @Provides
     @Singleton

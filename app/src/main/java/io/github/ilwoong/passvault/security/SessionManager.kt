@@ -38,6 +38,9 @@ interface SessionResource {
     fun onUnlocked(vaultKey: ByteArray)
 
     fun onLocked()
+
+    /** BK-05: 금고를 새로 만들기 직전에 기존 자원(DB 파일)을 지운다. 닫힌 상태에서만 불린다. */
+    fun discard() = Unit
 }
 
 /** LOCK-01 ~ LOCK-05. 잠금 여부의 유일한 원천이며 VK 를 보유하는 유일한 곳이다. */
@@ -100,6 +103,45 @@ class SessionManager(
                     UnlockResult.WrongPassword -> UnlockOutcome.WrongPassword
                     is UnlockResult.LockedOut -> UnlockOutcome.LockedOut(r.remainingMs)
                     UnlockResult.NoVault, UnlockResult.Corrupt -> UnlockOutcome.CannotOpen
+                }
+            }
+        } finally {
+            if (_state.value != SessionState.Unlocked) _state.value = stateFromDisk()
+        }
+    }
+
+    /** BK-03: 백업 비밀번호가 마스터와 같은지. 실패 횟수에 넣지 않는다. */
+    suspend fun matchesMasterPassword(password: CharArray): Boolean =
+        withContext(kdfDispatcher) { keyManager.matchesMasterPassword(password) }
+
+    /**
+     * BK-05: 백업 복호화가 성공한 뒤에만 부른다. 새 비밀번호로 금고를 다시 만들고, 기존 DB 를 지우고,
+     * 새 DB 를 연 상태에서 [populate] 로 항목을 기록한 **뒤에** Unlocked 로 바꾼다.
+     * 상태가 먼저 바뀌면 화면 분기가 바뀌어 기록 작업이 취소될 수 있다 (UX-00).
+     */
+    suspend fun recreateVault(newPassword: CharArray, populate: suspend () -> Unit): Unit = attempt.withLock {
+        check(_state.value == SessionState.Locked || _state.value == SessionState.Corrupt) { "열려 있는 금고는 다시 만들지 않는다" }
+        _state.value = SessionState.Unlocking
+        try {
+            withContext(kdfDispatcher) {
+                val key = keyManager.recreateVault(newPassword)
+                try {
+                    resource.discard()
+                    resource.onUnlocked(key)
+                } catch (e: Throwable) {
+                    key.zeroize()
+                    throw e
+                }
+                try {
+                    populate()
+                } catch (e: Throwable) {
+                    resource.onLocked()
+                    key.zeroize()
+                    throw e
+                }
+                synchronized(keyLock) {
+                    vaultKey = key
+                    _state.value = SessionState.Unlocked
                 }
             }
         } finally {

@@ -150,7 +150,13 @@ class SettingsViewModel @Inject constructor(
 }
 
 @Composable
-fun SettingsRoute(onBack: () -> Unit, onChangePassword: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsRoute(
+    onBack: () -> Unit,
+    onChangePassword: () -> Unit,
+    onBackupExport: () -> Unit,
+    onBackupImport: () -> Unit,
+    vm: SettingsViewModel = hiltViewModel(),
+) {
     val activity = LocalActivity.current as FragmentActivity
     val scope = rememberCoroutineScope()
     val title = stringResource(R.string.bio_prompt_enroll_title)
@@ -177,6 +183,8 @@ fun SettingsRoute(onBack: () -> Unit, onChangePassword: () -> Unit, vm: Settings
         onAutoLockChange = vm::setAutoLockSeconds,
         onLockOnBackgroundChange = vm::setLockOnBackground,
         onClipboardChange = vm::setClipboardClearSeconds,
+        onBackupExport = onBackupExport,
+        onBackupImport = onBackupImport,
     )
 }
 
@@ -200,6 +208,8 @@ fun SettingsScreen(
     onAutoLockChange: (Int) -> Unit = {},
     onLockOnBackgroundChange: (Boolean) -> Unit = {},
     onClipboardChange: (Int) -> Unit = {},
+    onBackupExport: () -> Unit = {},
+    onBackupImport: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     var choosing by remember { mutableStateOf<Choice?>(null) }
@@ -274,6 +284,19 @@ fun SettingsScreen(
                 modifier = Modifier.clickable(onClick = onChangePassword),
                 headlineContent = { Text(stringResource(R.string.settings_change_password)) },
                 supportingContent = { Text(stringResource(R.string.settings_change_password_desc)) },
+            )
+            HorizontalDivider()
+            // UX-11
+            ListItem(
+                modifier = Modifier.clickable(onClick = onBackupExport),
+                headlineContent = { Text(stringResource(R.string.settings_backup_export)) },
+                supportingContent = { Text(stringResource(R.string.settings_backup_export_desc)) },
+            )
+            HorizontalDivider()
+            ListItem(
+                modifier = Modifier.clickable(onClick = onBackupImport),
+                headlineContent = { Text(stringResource(R.string.settings_backup_import)) },
+                supportingContent = { Text(stringResource(R.string.settings_backup_import_desc)) },
             )
             HorizontalDivider()
         }

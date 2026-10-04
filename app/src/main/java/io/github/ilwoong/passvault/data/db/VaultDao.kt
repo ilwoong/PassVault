@@ -1,6 +1,7 @@
 package io.github.ilwoong.passvault.data.db
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
@@ -102,6 +103,53 @@ abstract class VaultDao {
         upsertEntry(entry)
         upsertIdentity(detail)
     }
+
+    /** BK-03 내보내기 순서. */
+    @Query("SELECT id FROM entry ORDER BY createdAtEpochMs ASC, id ASC")
+    abstract suspend fun allIds(): List<String>
+
+    /**
+     * BK-04 전량 교체. 한 트랜잭션이라 중간에 실패하면 기존 데이터가 그대로 남는다.
+     * 상세·정책은 entry 삭제의 CASCADE 로 함께 지워진다.
+     */
+    @Transaction
+    open suspend fun replaceAll(
+        entries: List<EntryEntity>,
+        logins: List<LoginDetailEntity>,
+        notes: List<NoteDetailEntity>,
+        cards: List<CardDetailEntity>,
+        identities: List<IdentityDetailEntity>,
+        policies: List<PasswordPolicyEntity>,
+    ) {
+        deleteAllEntries()
+        insertEntries(entries)
+        insertLogins(logins)
+        insertNotes(notes)
+        insertCards(cards)
+        insertIdentities(identities)
+        insertPolicies(policies)
+    }
+
+    @Query("DELETE FROM entry")
+    protected abstract suspend fun deleteAllEntries()
+
+    @Insert
+    protected abstract suspend fun insertEntries(rows: List<EntryEntity>)
+
+    @Insert
+    protected abstract suspend fun insertLogins(rows: List<LoginDetailEntity>)
+
+    @Insert
+    protected abstract suspend fun insertNotes(rows: List<NoteDetailEntity>)
+
+    @Insert
+    protected abstract suspend fun insertCards(rows: List<CardDetailEntity>)
+
+    @Insert
+    protected abstract suspend fun insertIdentities(rows: List<IdentityDetailEntity>)
+
+    @Insert
+    protected abstract suspend fun insertPolicies(rows: List<PasswordPolicyEntity>)
 
     /** 상세·정책은 ON DELETE CASCADE 로 함께 지워진다 (DM-11). */
     @Query("DELETE FROM entry WHERE id = :id")

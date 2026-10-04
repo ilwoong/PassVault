@@ -55,56 +55,94 @@ class EntryRepository(
         require(existing == null || existing.entry.type == draft.content.type) { "항목 타입은 바꿀 수 없다 (UX-06)" }
 
         val id = existing?.entry?.id ?: UUID.randomUUID().toString()
+        val passwordUpdatedAt = (draft.content as? EntryContent.Login)?.let { c ->
+            val previous = existing?.login
+            when {
+                previous == null || previous.password != c.password -> c.password?.let { now }
+                else -> previous.passwordUpdatedAtEpochMs
+            }
+        }
+        val rows = rowsFor(
+            Entry(id, draft.title, draft.isFavorite, existing?.entry?.createdAtEpochMs ?: now, now, passwordUpdatedAt, draft.content),
+            now,
+        )
+        when (draft.content.type) {
+            EntryType.LOGIN -> dao.saveLogin(rows.entry, rows.login!!, rows.policy)
+            EntryType.NOTE -> dao.saveNote(rows.entry, rows.note!!)
+            EntryType.CARD -> dao.saveCard(rows.entry, rows.card!!)
+            EntryType.IDENTITY -> dao.saveIdentity(rows.entry, rows.identity!!)
+        }
+        return id
+    }
+
+    /** BK-03. 내보낼 전체 항목. */
+    suspend fun exportAll(): List<Entry> = dao.allIds().mapNotNull { get(it) }
+
+    /**
+     * BK-04 전량 교체. 시각·id 는 백업의 것을 그대로 쓰고, 캐시(subtitle, last4, 정책 플래그)는
+     * 다시 계산한다 (DM-11). 한 트랜잭션이라 실패하면 기존 데이터가 남는다.
+     */
+    suspend fun replaceAll(entries: List<Entry>, now: Long = clock()) {
+        val rows = entries.map { rowsFor(it, now) }
+        dao.replaceAll(
+            rows.map { it.entry },
+            rows.mapNotNull { it.login },
+            rows.mapNotNull { it.note },
+            rows.mapNotNull { it.card },
+            rows.mapNotNull { it.identity },
+            rows.mapNotNull { it.policy },
+        )
+    }
+
+    /** 한 항목의 테이블 행들. 파생값(subtitle, last4, 정책 캐시)은 여기서만 계산한다 (DM-11). */
+    private class Rows(
+        val entry: EntryEntity,
+        val login: LoginDetailEntity? = null,
+        val note: NoteDetailEntity? = null,
+        val card: CardDetailEntity? = null,
+        val identity: IdentityDetailEntity? = null,
+        val policy: PasswordPolicyEntity? = null,
+    )
+
+    private fun rowsFor(e: Entry, now: Long): Rows {
         fun entry(subtitle: String?, report: PolicyReport = PolicyReport.NotConfigured) = EntryEntity(
-            id = id,
-            type = draft.content.type,
-            title = draft.title,
+            id = e.id,
+            type = e.content.type,
+            title = e.title,
             subtitle = subtitle?.takeIf { it.isNotBlank() },
-            isFavorite = draft.isFavorite,
-            createdAtEpochMs = existing?.entry?.createdAtEpochMs ?: now,
-            updatedAtEpochMs = now,
+            isFavorite = e.isFavorite,
+            createdAtEpochMs = e.createdAtEpochMs,
+            updatedAtEpochMs = e.updatedAtEpochMs,
             hasPolicyViolation = (report as? PolicyReport.Evaluated)?.hasError == true,
             hasRotationDue = (report as? PolicyReport.Evaluated)?.isRotationDue == true,
         )
-
-        when (val c = draft.content) {
+        val id = e.id
+        return when (val c = e.content) {
             is EntryContent.Login -> {
-                val previous = existing?.login
-                val passwordUpdatedAt = when {
-                    previous == null || previous.password != c.password -> c.password?.let { now }
-                    else -> previous.passwordUpdatedAtEpochMs
-                }
                 // SEC-12 예외: 비밀번호는 이미 String 이다. 검사용 사본만 지운다.
                 val report = (c.password ?: "").toCharArray().useThenZeroize { pw ->
-                    PasswordPolicyEvaluator.evaluate(pw, c.policy, passwordUpdatedAt, now)
+                    PasswordPolicyEvaluator.evaluate(pw, c.policy, e.passwordUpdatedAtEpochMs, now)
                 }
-                dao.saveLogin(
+                Rows(
                     entry(c.username, report),
-                    LoginDetailEntity(id, c.username, c.password, c.url, c.memo, passwordUpdatedAt),
-                    c.policy?.toEntity(id),
+                    login = LoginDetailEntity(id, c.username, c.password, c.url, c.memo, e.passwordUpdatedAtEpochMs),
+                    policy = c.policy?.toEntity(id),
                 )
             }
-            is EntryContent.Note -> dao.saveNote(entry(null), NoteDetailEntity(id, c.body))
+            is EntryContent.Note -> Rows(entry(null), note = NoteDetailEntity(id, c.body))
             is EntryContent.Card -> {
                 val number = normalizeCardNumber(c.number)
                 val last4 = cardLast4(number)
-                dao.saveCard(
+                Rows(
                     entry(last4?.let { "•••• $it" }),
-                    CardDetailEntity(
-                        id, c.cardholderName, number, last4, c.brand,
-                        c.expiryMonth, c.expiryYear, c.cvc, c.pin, c.memo,
-                    ),
+                    card = CardDetailEntity(id, c.cardholderName, number, last4, c.brand, c.expiryMonth, c.expiryYear, c.cvc, c.pin, c.memo),
                 )
             }
-            is EntryContent.Identity -> dao.saveIdentity(
+            is EntryContent.Identity -> Rows(
                 entry(c.issuer),
-                IdentityDetailEntity(
-                    id, c.docType, c.fullName, c.docNumber, c.issuer,
-                    c.issuedDate, c.expiryDate, c.memo,
-                ),
+                identity = IdentityDetailEntity(id, c.docType, c.fullName, c.docNumber, c.issuer, c.issuedDate, c.expiryDate, c.memo),
             )
         }
-        return id
     }
 
     /**

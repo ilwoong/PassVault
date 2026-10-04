@@ -3,6 +3,12 @@ package io.github.ilwoong.passvault.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import io.github.ilwoong.passvault.ui.backup.RestoreRoute
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -29,27 +35,40 @@ fun PassVaultRoot(session: SessionManager) = NoPersonalizedLearning {
     val state by session.state.collectAsStateWithLifecycle()
     val branch = when (state) {
         SessionState.NoVault, SessionState.Creating -> "onboarding"
-        SessionState.Corrupt -> "corrupt"
-        SessionState.Locked, SessionState.Unlocking -> "unlock"
+        // 손상 화면에서 시작한 복구(BK-05)가 상태 변화로 취소되지 않게 같은 분기로 둔다
+        SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> "unlock"
         SessionState.Unlocked -> "vault"
     }
     BranchScope(branch) {
         when (state) {
             SessionState.NoVault, SessionState.Creating -> OnboardingRoute(creating = state == SessionState.Creating)
-            SessionState.Corrupt -> CannotOpenScreen()
-            SessionState.Locked, SessionState.Unlocking -> UnlockRoute(unlocking = state == SessionState.Unlocking)
+            SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> LockedBranch(state)
             SessionState.Unlocked -> VaultNavHost()
         }
     }
 }
 
-/** ARC-06. 백업 복구 진입점은 M8 에서 붙는다. 아무것도 지우거나 다시 만들지 않는다. */
 @Composable
-private fun CannotOpenScreen() {
+private fun LockedBranch(state: SessionState) {
+    // 비밀이 아닌 화면 선택값이다
+    var restoring by rememberSaveable { mutableStateOf(false) }
+    when {
+        restoring -> RestoreRoute(onCancel = { restoring = false })
+        state == SessionState.Corrupt -> CannotOpenScreen(onRestore = { restoring = true })
+        else -> UnlockRoute(unlocking = state == SessionState.Unlocking, onRestore = { restoring = true })
+    }
+}
+
+/** ARC-06. 아무것도 지우거나 다시 만들지 않는다. 복구는 사용자가 고른 백업 파일로만 (BK-05). */
+@Composable
+private fun CannotOpenScreen(onRestore: () -> Unit) {
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(R.string.cannot_open_title), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.cannot_open_body))
+            OutlinedButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.action_restore_from_backup))
+            }
         }
     }
 }

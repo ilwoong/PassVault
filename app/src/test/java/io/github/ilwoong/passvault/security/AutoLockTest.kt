@@ -109,3 +109,39 @@ class AutoLockTest {
         assertEquals(1, locks)
     }
 }
+
+/** LOCK-03 예외: 우리가 띄운 파일 선택기 */
+class AutoLockPickerTest {
+    private var locks = 0
+    private var elapsed = 0L
+    private val autoLock = AutoLock(
+        clocks = object : Clocks {
+            override fun wallMs() = 0L
+            override fun elapsedMs() = elapsed
+            override fun bootCount() = 1
+        },
+        timeoutMs = { 60_000L },
+        lockOnBackground = { true },
+        lock = { locks++ },
+        clearClipboard = {},
+    )
+
+    @Test
+    fun pickerSuspendsOnlyTheImmediateBackgroundLock() {
+        autoLock.onExternalPickerOpening()
+        autoLock.onBackground()
+        assertEquals(0, locks)
+
+        elapsed += 61_000 // 선택기에서 오래 머물렀다
+        autoLock.onForeground()
+        assertEquals("유휴 판정은 그대로다", 1, locks)
+    }
+
+    @Test
+    fun afterPickerClosesBackgroundLockResumes() {
+        autoLock.onExternalPickerOpening()
+        autoLock.onExternalPickerClosed()
+        autoLock.onBackground()
+        assertEquals(1, locks)
+    }
+}

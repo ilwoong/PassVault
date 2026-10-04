@@ -17,6 +17,10 @@ class AutoLock(
     @Volatile
     private var lastInteraction = clocks.elapsedMs()
 
+    /** LOCK-03 예외: 우리가 띄운 시스템 파일 선택기가 떠 있다. */
+    @Volatile
+    private var externalPickerOpen = false
+
     /** Activity.onUserInteraction. 화면을 보고만 있는 것은 상호작용이 아니다. */
     fun onInteraction() {
         lastInteraction = clocks.elapsedMs()
@@ -27,7 +31,19 @@ class AutoLock(
 
     /** ON_STOP (구성 변경 제외). 클립보드는 지우지 않는다 — 붙여넣으러 나간 것이다 (LOCK-04 6). */
     fun onBackground() {
-        if (lockOnBackground()) lock()
+        if (lockOnBackground() && !externalPickerOpen) lock()
+    }
+
+    /**
+     * LOCK-03 예외: 백업용 시스템 파일 선택기(SAF)를 띄우기 직전에 부른다. 결과를 받으면
+     * [onExternalPickerClosed]. 그 사이에는 백그라운드 즉시 잠금만 보류한다 — 유휴·화면 꺼짐은 그대로다.
+     */
+    fun onExternalPickerOpening() {
+        externalPickerOpen = true
+    }
+
+    fun onExternalPickerClosed() {
+        externalPickerOpen = false
     }
 
     /** ON_START. 화면을 그리기 전에 판정한다. */

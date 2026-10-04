@@ -71,3 +71,19 @@ fun WelcomeBiometricScreen(onEnable: () -> Unit, onLater: () -> Unit) {
         }
     }
 }
+
+/** UX-01 5 단계. 백업은 설정에서도 만들 수 있다 (BK-03, 재인증 필요). */
+@Composable
+fun WelcomeBackupScreen(onBackupNow: () -> Unit, onLater: () -> Unit) {
+    Scaffold { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(stringResource(R.string.welcome_backup_title), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.welcome_backup_body))
+            Button(onClick = onBackupNow, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_backup_now)) }
+            OutlinedButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_later)) }
+        }
+    }
+}

@@ -37,4 +37,10 @@ class VaultDatabaseHolder(
         db?.close()
         db = null
     }
+
+    /** BK-05: 다시 만들기 직전에 기존 DB 파일(WAL 포함)을 지운다. */
+    override fun discard() {
+        check(db == null) { "열린 DB 는 지우지 않는다" }
+        context.deleteDatabase(name)
+    }
 }
