@@ -78,9 +78,12 @@
 ## UX-04 항목 목록
 
 - 상단: 검색 필드. `entry.title` / `entry.subtitle` 부분 일치 (대소문자 무시).
+  SQLite `LIKE` 로 DB 에서 거른다. `%`·`_` 는 이스케이프한다. 대소문자 무시는 ASCII 범위다 (한글은 해당 없음).
 - 타입 필터 칩: 전체 / 로그인 / 메모 / 카드 / 신분증.
 - 정렬: 즐겨찾기 먼저 → `title` 오름차순. 정렬 옵션은 제공하지 않는다.
-- 각 행: 타입 아이콘, `title`, `subtitle`, 즐겨찾기 토글.
+- 각 행: 타입 표시, `title`, `subtitle`, 즐겨찾기 토글.
+  즐겨찾기 토글은 `entry` 한 행만 `UPDATE` 한다 (`REPLACE` 금지 — CASCADE). `updatedAt` 은 바꾸지 않는다
+  (내용 변경이 아니다).
   - 로그인 항목 중 정책 위반이 있으면 경고 배지. `entry.hasPolicyViolation` /
     `entry.hasRotationDue` 캐시만 읽는다 ([DM-03](03-data-model.md#dm-03-entry-공통)).
     목록에서 비밀번호를 복호화해 검사하지 않는다.
@@ -92,7 +95,11 @@
 
 - 비-비밀 필드는 그대로 표시.
 - **비밀 필드는 기본 마스킹.** 눈 아이콘으로 토글하며, 토글 상태는 화면을 떠날 때 초기화된다.
+  마스킹은 실제 길이와 무관한 고정 길이(`••••••••`)로 표시한다 — 길이도 정보다.
+  토글 상태는 저장되지 않는 `remember` 에 둔다 (UX-00b).
 - 각 필드에 복사 버튼. 복사 시 민감 플래그 + 자동 삭제 ([LOCK-07](06-lock-policy.md)).
+  비밀이 아닌 필드(사용자명 등)를 복사할 때도 민감 플래그를 단다 — 금고에서 나가는 모든 값에 같은 규칙.
+  자동 삭제는 M7 에서 붙는다.
 - 로그인 항목: 정책 요약과 위반 목록을 보여준다.
   - 위반이 없고 정책이 입력돼 있으면 "정책 충족" 표시.
   - 정책 미입력이면 "비밀번호 규칙 기록하기" 유도 (DM-10 `NotConfigured`).
@@ -109,6 +116,16 @@
 - 저장은 트랜잭션 하나 (DM-11).
 - 입력 필드에 자동완성·학습이 걸리지 않게 한다 (`KeyboardType.Password`,
   `autoCorrect = false`, IME 개인화 비활성).
+
+  **구현 (Compose 1.10 소스로 확인)**: `KeyboardOptions` 로는 `IME_FLAG_NO_PERSONALIZED_LEARNING` 을
+  설정할 수 없고, `autoCorrect = false` 는 자동수정 플래그를 뺄 뿐 학습을 막지 않는다.
+  `KeyboardType.Password` 는 학습을 막지만 많은 키보드가 영문 자판으로 강제 전환해 한글 메모를 쓸 수 없다.
+  그래서 **앱 루트에 `InterceptPlatformTextInput` 을 씌워** 모든 입력 세션의 `EditorInfo` 에 이 플래그를
+  더한다. 제목·사용자명처럼 비밀이 아닌 필드도 포함한다 — 어떤 계정이 있는지 자체가 메타데이터다
+  ([01](01-threat-model.md) 보호 대상 '높음').
+  - 한 줄 비밀 필드(비밀번호, 카드번호, CVC, PIN, 신분증 번호)는 `SecureTextField` + 표시 토글.
+    숫자만인 필드는 `KeyboardType.NumberPassword`.
+  - 여러 줄 비밀 필드(메모, 메모 본문)는 일반 입력란. 학습 차단은 루트 인터셉터가 맡는다.
 
 ## UX-07 비밀번호 정책 편집
 
