@@ -3,6 +3,7 @@ package io.github.ilwoong.passvault.ui.settings
 import io.github.ilwoong.passvault.ui.common.BrandMark
 import io.github.ilwoong.passvault.ui.common.SectionHeader
 import androidx.annotation.RawRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,8 +34,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.github.ilwoong.passvault.R
 
-/** 앱에 실려 배포되는 구성요소의 고지. [text] 가 null 이면 고지할 라이선스 원문이 없다(퍼블릭 도메인). */
-data class OssNotice(val name: String, val copyright: String, val license: String, @param:RawRes val text: Int?)
+/**
+ * 앱에 실려 배포되는 구성요소의 고지. [text] 가 null 이면 고지할 라이선스 원문이 없다(퍼블릭 도메인).
+ * 저작권 표기는 원문 그대로라 번역하지 않는다. 우리가 붙이는 설명은 [note] 로 따로 둔다.
+ */
+data class OssNotice(
+    val name: String,
+    val copyright: String?,
+    val license: String,
+    @param:RawRes val text: Int?,
+    @param:StringRes val note: Int? = null,
+)
 
 /** 런타임 클래스패스 기준. 의존성을 바꾸면 이 목록도 바꾼다 (UX-12). */
 val OSS_NOTICES = listOf(
@@ -45,7 +55,7 @@ val OSS_NOTICES = listOf(
         "Copyright 2015 Daniel Dinu, Dmitry Khovratovich, Jean-Philippe Aumasson, Samuel Neves",
         "CC0 1.0 / Apache License 2.0", R.raw.license_apache2,
     ),
-    OssNotice("SQLite, LibTomCrypt", "SQLCipher 에 포함", "Public Domain", null),
+    OssNotice("SQLite, LibTomCrypt", null, "Public Domain", null, note = R.string.about_bundled_in_sqlcipher),
     OssNotice("Android Jetpack (AndroidX)", "Copyright The Android Open Source Project", "Apache License 2.0", R.raw.license_apache2),
     OssNotice("Kotlin, kotlinx.coroutines", "Copyright JetBrains s.r.o. and contributors", "Apache License 2.0", R.raw.license_apache2),
     OssNotice("Dagger, Hilt", "Copyright The Dagger Authors", "Apache License 2.0", R.raw.license_apache2),
@@ -95,7 +105,10 @@ fun AboutScreen(version: String, onBack: () -> Unit) {
                 ListItem(
                     modifier = if (notice.text != null) Modifier.clickable { open = notice } else Modifier,
                     headlineContent = { Text(notice.name) },
-                    supportingContent = { Text("${notice.copyright}\n${notice.license}") },
+                    supportingContent = {
+                        val first = notice.copyright ?: notice.note?.let { stringResource(it) }.orEmpty()
+                        Text("$first\n${notice.license}")
+                    },
                 )
             }
         }

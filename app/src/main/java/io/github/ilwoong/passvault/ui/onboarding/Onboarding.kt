@@ -97,7 +97,7 @@ fun OnboardingRoute(creating: Boolean, vm: OnboardingViewModel = hiltViewModel()
     )
 }
 
-/** UX-01. 생체 등록(4 단계)은 M6, 백업 안내(5 단계)는 M8 에서 붙는다. */
+/** UX-01 1~3 단계. 4·5 단계(생체 등록, 백업 안내)는 금고가 만들어진 뒤 금고 분기에서 보여 준다 (WelcomeBiometric.kt). */
 @Composable
 fun OnboardingScreen(
     step: OnboardingStep,

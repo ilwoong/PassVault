@@ -316,6 +316,10 @@ class BackupCodec(
         const val MAX_ENTRIES = 50_000
         const val MAX_TITLE = MAX_TITLE_LENGTH
         const val MAX_TEXT = MAX_TEXT_LENGTH
+        /**
+         * BK-08 이 정한 대체 제목. 문자열 리소스로 빼지 않는다 — 가져올 때 한 번 채워 넣어 금고에 저장되는 **데이터**이고
+         * (화면 언어를 바꿔도 따라 바뀌지 않는다), 이 패키지는 Android 리소스 없이 JVM 에서 테스트한다.
+         */
         const val UNTITLED = "(제목 없음)"
 
         private const val SALT_BYTES = 16

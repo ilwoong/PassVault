@@ -273,5 +273,6 @@
     <string name="about_local_only">데이터는 이 기기에만 저장됩니다</string>
     <string name="about_local_only_desc">PassVault 는 인터넷 권한이 없어 어떤 데이터도 외부로 보내지 않습니다. 기기를 바꾸거나 잃어버릴 때를 대비해 백업 파일을 직접 만들어 두세요.</string>
     <string name="about_licenses">오픈소스 라이선스</string>
+    <string name="about_bundled_in_sqlcipher">SQLCipher 에 포함</string>
     <string name="action_close">닫기</string>
 </resources>

@@ -184,7 +184,7 @@ class VaultScreensTest {
         assertEquals("id-1", draft.id)
         assertEquals(secret, c.password)
         assertEquals(null, c.url)
-        assertEquals("M5 전까지 편집하지 않는 정책도 그대로 넘긴다", 12, c.policy?.minLength)
+        assertEquals("손대지 않은 정책도 그대로 넘긴다", 12, c.policy?.minLength)
     }
 
     // --- UX-06 IME 학습 차단 ---

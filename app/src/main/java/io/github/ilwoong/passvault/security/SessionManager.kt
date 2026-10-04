@@ -238,8 +238,8 @@ class SessionManager(
     }
 
     /**
-     * LOCK-04. 순서: 상태 전환 → (UI 가 분기째 버림, UX-00) → DB close → VK 제로화.
-     * 클립보드 삭제(6 단계)는 M7 에서 붙는다.
+     * LOCK-04. 순서: 상태 전환 → (UI 가 상태 변화를 보고 금고 화면의 ViewModel 을 즉시 비움, 4 단계) → DB close → VK 제로화.
+     * 클립보드 삭제(6 단계)는 잠금을 부른 쪽이 한다 — 수동 잠금과 화면 꺼짐일 때만 지우기 때문이다.
      */
     fun lock() {
         synchronized(keyLock) {
