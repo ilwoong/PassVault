@@ -16,12 +16,14 @@ class AutoLockTest {
     private var timeoutSec = 60
     private var lockOnBackground = true
     private var locks = 0
+    private var leaveLocks = 0
     private var clipboardClears = 0
     private val autoLock = AutoLock(
         clocks = clock,
         timeoutMs = { timeoutSec * 1_000L },
         lockOnBackground = { lockOnBackground },
         lock = { locks++ },
+        lockOnLeave = { locks++; leaveLocks++ },
         clearClipboard = { clipboardClears++ },
     )
 
@@ -102,6 +104,18 @@ class AutoLockTest {
     }
 
     @Test
+    fun leavingDefersWhileBusyButIdleDoesNot() {
+        autoLock.onBackground()
+        autoLock.onScreenOff()
+        assertEquals("백그라운드 전환과 화면 꺼짐은 전환이 끝난 뒤에라도 잠근다", 2, leaveLocks)
+
+        clock.elapsed += 60_000
+        autoLock.tick()
+        assertEquals(3, locks)
+        assertEquals("해제 전의 유휴는 미뤄 적용하지 않는다", 2, leaveLocks)
+    }
+
+    @Test
     fun settingsAreReadAtDecisionTime() {
         clock.elapsed += 20_000
         timeoutSec = 15 // 사용자가 설정을 줄였다
@@ -123,6 +137,7 @@ class AutoLockPickerTest {
         timeoutMs = { 60_000L },
         lockOnBackground = { true },
         lock = { locks++ },
+        lockOnLeave = { locks++ },
         clearClipboard = {},
     )
 

@@ -23,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -157,6 +158,29 @@ class BackupIntegrationTest {
         }
         assertFalse(session.state.value == SessionState.Unlocked)
         assertThrows("DB 가 닫혀 있어야 한다", IllegalStateException::class.java) { holder.requireDatabase() }
+    }
+
+    @Test
+    fun leavingDuringRestoreLocksAfterEntriesAreWritten() {
+        // LOCK-03: 복구 도중 화면이 꺼지거나 앱을 떠났다. 기록은 끊지 않고, 끝난 뒤 잠긴 채로 둔다
+        val meta = File(dir, "vault_meta").apply { writeBytes(ByteArray(10)) }
+        val holder = VaultDatabaseHolder(context, dbName)
+        val session = SessionManager(keyManager(meta), holder)
+
+        val unlocked = runBlocking {
+            session.recreateVault("new master pw".toCharArray()) {
+                session.lock(deferIfBusy = true)
+                EntryRepository(holder.requireDatabase().dao()).replaceAll(FixtureV1.entries)
+            }
+        }
+        assertFalse(unlocked)
+        assertEquals(SessionState.Locked, session.state.value)
+        assertNull(session.withVaultKey { it })
+        assertThrows("DB 가 닫혀 있어야 한다", IllegalStateException::class.java) { holder.requireDatabase() }
+
+        assertEquals(UnlockOutcome.Success, runBlocking { session.unlock("new master pw".toCharArray()) })
+        assertEquals("복구한 항목은 남아 있다", FixtureV1.entries, runBlocking { EntryRepository(holder.requireDatabase().dao()).exportAll() })
+        session.lock()
     }
 
     @Test

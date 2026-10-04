@@ -84,7 +84,8 @@ object AppModule {
         clocks = clocks,
         timeoutMs = { settings.state.value.autoLockSeconds * 1_000L },
         lockOnBackground = { settings.state.value.lockOnBackground },
-        lock = session::lock,
+        lock = { session.lock() },
+        lockOnLeave = { session.lock(deferIfBusy = true) },
         clearClipboard = clipboard::clearIfOurs,
     )
 

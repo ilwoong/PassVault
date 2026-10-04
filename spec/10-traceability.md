@@ -12,7 +12,7 @@
 | SEC-02 | `security/Argon2KeyDeriver` — Argon2id, `calibrateKdf` 로 NFR-01 안에서 최대 파라미터 (CRY-02, CRY-09) | `Argon2KeyDeriverTest`, `KdfCalibrationTest`. 실기기(S23) 266~528ms. 저사양 기기는 미확인 — 아래 수기 표 |
 | SEC-03 | `AndroidManifest.xml` `allowBackup=false`, `res/xml/data_extraction_rules.xml` | TST-13 릴리스 머지 매니페스트 확인 (M9) |
 | SEC-04 | `backup/BackupCodec` — 백업 비밀번호 → Argon2id → AES-256-GCM, 헤더 AAD. 기기 키 미사용 (BK-02) | `BackupCodecTest`, `BackupIntegrationTest` (v1 고정 픽스처 포함), 에뮬레이터에서 만든 백업을 실기기에서 복구 |
-| SEC-05 | `security/AutoLock` (유휴·백그라운드·화면 꺼짐), `MainActivity`·`PassVaultApp` 연결 (LOCK-03). 잠기는 즉시 `ui/BranchStores` 가 금고 분기 ViewModel 을 비운다 (LOCK-04 4 단계) | `AutoLockTest`, `AutoLockPickerTest`, `SessionManagerTest`, `BranchStoresTest` (TST-08). 릴리스 빌드 E2E: 백그라운드 8초·20초 뒤 복귀(목록·상세·편집), 화면 꺼짐, 키보드 타이핑 중 유휴 잠금 미발동 |
+| SEC-05 | `security/AutoLock` (유휴·백그라운드·화면 꺼짐), `MainActivity`·`PassVaultApp` 연결 (LOCK-03). 전환 중의 백그라운드·화면 꺼짐은 `SessionManager` 가 전환 직후 적용한다. 잠기는 즉시 `ui/BranchStores` 가 금고 분기 ViewModel 을 비운다 (LOCK-04 4 단계) | `AutoLockTest`, `AutoLockPickerTest`, `SessionManagerTest`, `BranchStoresTest` (TST-08). 릴리스 빌드 E2E: 백그라운드 8초·20초 뒤 복귀(목록·상세·편집), 화면 꺼짐, 키보드 타이핑 중 유휴 잠금 미발동 |
 | SEC-06 | `MainActivity` — `FLAG_SECURE` (디버그 포함, 단일 Activity) | 코드 확인. 실기기에서 화면 캡처와 최근 앱 미리보기가 가려지는 것을 확인 |
 | SEC-07 | `ui/common/SecureClipboard` — `EXTRA_IS_SENSITIVE`, 자기 클립만 지움 (LOCK-07) | `SecureClipboardTest`, `ClipboardAndSettingsTest`. 실기기에서 자동 삭제 확인 |
 | SEC-08 | `AndroidManifest.xml` — `MainActivity` 만 exported, `ProfileInstallReceiver` 제거 | TST-13 (허용 예외 4건 외 없음, M9) |

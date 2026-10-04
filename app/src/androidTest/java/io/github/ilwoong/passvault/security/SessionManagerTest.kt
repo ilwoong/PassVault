@@ -24,10 +24,14 @@ class SessionManagerTest {
         var failOpen = false
         var lastKey: ByteArray? = null
 
+        /** DB 를 여는 도중 — 세션은 아직 전환 중이다. */
+        var whileOpening: () -> Unit = {}
+
         override fun onUnlocked(vaultKey: ByteArray) {
             if (failOpen) error("DB 를 열 수 없음")
             opened++
             lastKey = vaultKey.copyOf()
+            whileOpening()
         }
 
         override fun onLocked() {
@@ -121,6 +125,52 @@ class SessionManagerTest {
         s.lock()
         s.lock()
         assertEquals(1, resource.closed)
+    }
+
+    // --- LOCK-03: 전환 중에 온 잠금 ---
+
+    @Test
+    fun leavingDuringUnlockLocksAsSoonAsItCompletes() {
+        runBlocking { newSession().createVault(pw.toCharArray()) }
+        val resource = FakeResource()
+        val s = newSession(resource)
+        resource.whileOpening = { s.lock(deferIfBusy = true) } // 해제 도중 화면이 꺼지거나 앱을 떠났다
+
+        assertEquals("비밀번호는 맞았다", UnlockOutcome.Success, s.unlockBlocking(pw))
+        assertEquals(SessionState.Locked, s.state.value)
+        assertEquals(1, resource.closed)
+        assertNull(s.withVaultKey { it })
+
+        resource.whileOpening = {}
+        assertEquals(UnlockOutcome.Success, s.unlockBlocking(pw))
+        assertEquals("미뤄 둔 잠금은 한 번만 적용된다", SessionState.Unlocked, s.state.value)
+    }
+
+    @Test
+    fun idleLockDuringUnlockIsNotDeferred() {
+        runBlocking { newSession().createVault(pw.toCharArray()) }
+        val resource = FakeResource()
+        val s = newSession(resource)
+        resource.whileOpening = { s.lock() } // 유휴 판정. 해제 전의 유휴는 의미가 없다
+
+        assertEquals(UnlockOutcome.Success, s.unlockBlocking(pw))
+        assertEquals(SessionState.Unlocked, s.state.value)
+        assertEquals(0, resource.closed)
+    }
+
+    @Test
+    fun leavingDuringCreateEndsLockedAndSkipsTheWelcomeStep() {
+        val resource = FakeResource()
+        val s = newSession(resource)
+        resource.whileOpening = { s.lock(deferIfBusy = true) }
+
+        runBlocking { s.createVault(pw.toCharArray()) }
+        assertEquals(SessionState.Locked, s.state.value)
+        assertEquals(1, resource.closed)
+        assertEquals("UX-01 4 단계는 건너뛴다", false, s.consumeJustCreated())
+
+        resource.whileOpening = {}
+        assertEquals("금고는 만들어졌다", UnlockOutcome.Success, s.unlockBlocking(pw))
     }
 
     // --- LOCK-05 / TST-08 ---

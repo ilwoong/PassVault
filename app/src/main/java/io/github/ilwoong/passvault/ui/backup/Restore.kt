@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +75,10 @@ class RestoreViewModel @Inject constructor(
     var failed by mutableStateOf(false)
         private set
     var count by mutableStateOf(0)
+        private set
+
+    /** LOCK-03: 복구는 끝났지만 그 사이 사용자가 떠나 잠긴 채 끝났다. 해제 화면으로 돌아간다. */
+    var endedLocked by mutableStateOf(false)
         private set
 
     private var fileBytes: ByteArray? = null
@@ -137,7 +142,7 @@ class RestoreViewModel @Inject constructor(
         step = RestoreStep.NEW_PASSWORD
     }
 
-    /** BK-05 3·4 단계. 성공하면 세션이 Unlocked 가 되어 이 화면이 사라진다. */
+    /** BK-05 3·4 단계. 성공하면 세션이 Unlocked 가 되어 이 화면이 사라진다. 잠긴 채 끝났으면 [endedLocked]. */
     fun restore() {
         val entries = decoded ?: return
         val password = newPassword ?: return
@@ -145,8 +150,15 @@ class RestoreViewModel @Inject constructor(
         failed = false
         viewModelScope.launch {
             try {
-                session.recreateVault(password) {
+                val unlocked = session.recreateVault(password) {
                     EntryRepository(holder.requireDatabase().dao()).replaceAll(entries)
+                }
+                if (!unlocked) {
+                    // 이 ViewModel 은 해제 분기에 남는다. 복호화한 항목을 쥐고 있지 않는다
+                    decoded = null
+                    fileBytes = null
+                    step = RestoreStep.PICK_FILE
+                    endedLocked = true
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -158,6 +170,10 @@ class RestoreViewModel @Inject constructor(
                 newPassword = null
             }
         }
+    }
+
+    fun consumeEndedLocked() {
+        endedLocked = false
     }
 
     override fun onCleared() {
@@ -175,6 +191,13 @@ fun RestoreRoute(onCancel: () -> Unit, vm: RestoreViewModel = hiltViewModel()) {
     val newPassword = remember { TextFieldState() }
     val confirm = remember { TextFieldState() }
     val busy = vm.step == RestoreStep.DECRYPTING || vm.step == RestoreStep.RESTORING
+
+    LaunchedEffect(vm.endedLocked) {
+        if (vm.endedLocked) {
+            vm.consumeEndedLocked()
+            onCancel()
+        }
+    }
 
     Scaffold(
         topBar = {

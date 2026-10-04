@@ -6,12 +6,15 @@ package io.github.ilwoong.passvault.security
  * 유휴 시간은 단조 시계로 잰다 — 시스템 시간을 바꿔 잠금을 피하지 못한다.
  * 백그라운드에 있던 시간도 상호작용이 없던 시간이므로 따로 재지 않는다.
  * [lock] 은 이미 잠겨 있으면 아무것도 하지 않는다 (SessionManager.lock).
+ * [lockOnLeave] 는 사용자가 떠났다는 신호(백그라운드 전환·화면 꺼짐)에 쓴다. 해제·생성·복구가 진행 중이면
+ * 끝나는 즉시 잠근다. 유휴 판정은 [lock] 을 쓴다 — 해제 전의 유휴는 의미가 없다.
  */
 class AutoLock(
     private val clocks: Clocks,
     private val timeoutMs: () -> Long,
     private val lockOnBackground: () -> Boolean,
     private val lock: () -> Unit,
+    private val lockOnLeave: () -> Unit,
     private val clearClipboard: () -> Unit,
 ) {
     @Volatile
@@ -31,7 +34,7 @@ class AutoLock(
 
     /** ON_STOP (구성 변경 제외). 클립보드는 지우지 않는다 — 붙여넣으러 나간 것이다 (LOCK-04 6). */
     fun onBackground() {
-        if (lockOnBackground() && !externalPickerOpen) lock()
+        if (lockOnBackground() && !externalPickerOpen) lockOnLeave()
     }
 
     /**
@@ -56,7 +59,7 @@ class AutoLock(
 
     /** 화면 꺼짐은 "끝냈다"는 신호다. 클립보드도 지운다 (LOCK-04 6). */
     fun onScreenOff() {
-        lock()
+        lockOnLeave()
         clearClipboard()
     }
 }
