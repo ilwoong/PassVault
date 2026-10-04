@@ -97,7 +97,7 @@ autoLockSeconds: Int        // 기본 60. 허용: 15 / 30 / 60 / 300
                             // 백그라운드 즉시 잠금은 lockOnBackground 가 맡는다 (M7)
 lockOnBackground: Boolean   // 기본 true
 // biometricEnabled 는 저장하지 않는다 — vault_meta 의 wrappedVkByBio 유무에서 파생한다 (M6).
-// 따로 저장하면 둘이 어긋날 수 있고, DM-11 5 번 규칙이 그 경우를 다뤄야 한다. 파생하면 어긋날 수 없다.
+// 따로 저장하면 둘이 어긋날 수 있다. 파생하면 어긋날 수 없다 (그래서 DM-11 5 번은 폐기했다).
 clipboardClearSeconds: Int  // 기본 30. 허용: 0(자동 삭제 안 함) / 15 / 30 / 60
 ```
 
@@ -260,7 +260,7 @@ Repository에서 보장한다. 트랜잭션 하나로 처리한다.
 3. `updatedAtEpochMs` 는 Repository가 갱신한다. UI나 DAO가 직접 넣지 않는다.
 4. 삭제는 `ON DELETE CASCADE` + 외래키 활성(`PRAGMA foreign_keys = ON`)에 의존한다.
    SQLCipher/Room 설정에서 외래키가 켜져 있는지 반드시 확인한다 ([TST-06](08-testing.md)).
-5. `biometricEnabled` 설정과 `wrappedVkByBio` 존재 여부가 어긋나면 **`wrappedVkByBio` 쪽을 진실로 본다.**
+5. (폐기: M6 에서 `biometricEnabled` 설정값을 없애고 `wrappedVkByBio` 유무에서 파생하기로 했다 — DM-02. 어긋날 두 값이 없다.)
 
 ## DM-12 마이그레이션
 

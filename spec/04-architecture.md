@@ -88,7 +88,8 @@ ui  →  data  →  security
 
 ## ARC-05 스레딩
 
-- Argon2id 호출(수백 ms~1.5초)은 `Dispatchers.Default`. 진행 표시를 띄우고 취소 가능하게 한다.
+- Argon2id 호출(수백 ms~1.5초)은 `Dispatchers.Default`. 진행 표시를 띄운다. **취소는 제공하지 않는다** —
+  생성·비밀번호 변경은 중간에 끊지 않고(UX-01 3 단계), 해제는 NFR-01 안에 끝나 취소할 실익이 없다.
 - DB 접근은 Room의 `suspend` DAO. 직접 스레드를 만들지 않는다.
 - `SessionManager` 상태는 `StateFlow`. UI는 이것만 구독한다.
 - VK 바이트는 `SessionManager` 밖으로 복사해 나가지 않는다. 필요한 쪽은 `SessionManager`에

@@ -79,7 +79,7 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
 |--------|------|--------|------|
 | salt, m, t, p, wrapped_vk_by_mk, wrapped_vk_by_bio, 실패 횟수 | `vault_meta` (DB 밖, 앱 내부 저장소) | 불필요 | 모두 래핑된 값 또는 공개 파라미터. 해제 **전에** 읽어야 한다 |
 | 항목 전체 | SQLCipher DB | CRY-05 | |
-| 설정값 | DataStore Preferences | 불필요 | 비밀 아님 |
+| 설정값 | SharedPreferences ([DM-02](03-data-model.md)) | 불필요 | 비밀 아님 |
 | BioKey | Android Keystore | 하드웨어 | 밖으로 나오지 않음 |
 
 ## 금고 생성 (CRY-10)
