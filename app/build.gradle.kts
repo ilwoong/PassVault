@@ -46,6 +46,11 @@ android {
     }
 }
 
+// DM-12: Room 스키마 JSON 을 저장소에 커밋한다
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,6 +67,10 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.argon2kt)
+
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.sqlcipher.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -13,6 +13,8 @@ activityCompose = "1.13.0"
 junit = "4.13.2"
 androidxJunit = "1.3.0"
 argon2kt = "1.6.0"
+room = "2.8.5"
+sqlcipher = "4.19.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +33,11 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", v
 
 # CRY-02: Argon2id JNI 바인딩. 순수 JVM 구현은 성능이 부족하다 (ARC-04)
 argon2kt = { group = "com.lambdapioneer.argon2kt", name = "argon2kt", version.ref = "argon2kt" }
+
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+# CRY-05: DB 전체 암호화. raw key 모드로 연다
+sqlcipher-android = { group = "net.zetetic", name = "sqlcipher-android", version.ref = "sqlcipher" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
