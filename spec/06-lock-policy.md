@@ -23,7 +23,13 @@
 |------|-----|---------|-----|
 | `LOCKED` | 없음 | 닫힘 | unlock 화면만 ([UX-02](05-ui-flows.md)) |
 | `UNLOCKING` | 없음 | 닫힘 | 진행 표시. 입력 비활성 |
+| `CREATING` | 없음 | 닫힘 | 온보딩의 생성 진행 표시 ([UX-01](05-ui-flows.md) 3단계). `UNLOCKING` 의 변형 — 해제 화면이 아니라 온보딩에 머물기 위해 따로 둔다 |
 | `UNLOCKED` | 보유 | 열림 | 전체 기능 |
+| `NO_VAULT` | 없음 | 닫힘 | 온보딩 ([UX-01](05-ui-flows.md)). `vault_meta` 가 `Absent` |
+| `CORRUPT` | 없음 | 닫힘 | "금고를 열 수 없습니다" ([ARC-06](04-architecture.md)). `vault_meta` 가 `Corrupt` |
+
+`NO_VAULT` 와 `CORRUPT` 는 `LOCKED` 의 변형이다 — VK 가 없고 DB 가 닫혀 있다는 불변식이 같다.
+화면 분기를 위해 따로 둔다. 판정 근거는 DM-01 의 읽기 3분류다.
 
 - 상태는 `SessionManager` 의 `StateFlow<SessionState>` 하나로만 표현한다.
   잠금 여부를 판단하는 두 번째 소스를 만들지 않는다.
@@ -78,10 +84,29 @@
 | 7회 | 5분 |
 | 8회 이상 | 15분 (고정) |
 
-- `failedAttempts` / `lockoutUntilEpochMs` 를 `vault_meta` 에 **저장한다** (DM-01).
-  앱을 재시작해 우회하지 못하게 한다.
-- 대기 판정은 `System.currentTimeMillis()` 와 단조 시계를 **둘 다** 보고 더 보수적인 쪽을 택한다.
-  시간을 앞으로 돌려 대기를 건너뛰지 못하게 한다.
+- 실패 상태를 `vault_meta` 에 **저장한다** (DM-01). 앱을 재시작해 우회하지 못하게 한다.
+- 대기 판정은 벽시계와 단조 시계를 **둘 다** 보고 남은 시간이 더 긴 쪽을 택한다.
+
+단조 시계(`elapsedRealtime`)는 저장하지 않으면 앱 재시작 때 사라지고, 재부팅하면 0 으로
+돌아간다. 그래서 실패 시점의 **부팅 번호**(`Settings.Global.BOOT_COUNT`, 권한 불필요)와 함께 저장한다.
+
+```
+실패 시 (벽시계 W, 단조 E, 부팅 B, 대기 P):
+  lockoutUntilEpochMs   = W + P
+  lockoutBootCount      = B
+  lockoutUntilElapsedMs = E + P
+
+남은 시간 = max( lockoutUntilEpochMs - 지금 벽시계,
+                 같은 부팅이면 lockoutUntilElapsedMs - 지금 단조 시계, 아니면 0 )
+```
+
+| 공격 | 결과 |
+|------|------|
+| 시계를 앞으로 돌림 | 단조 시계 기한이 남아 막힘 |
+| 앱 강제 종료 후 재실행 | 저장된 두 기한이 그대로라 막힘 |
+| 시계 조작 + 앱 재실행 | 같은 부팅이므로 단조 시계 기한으로 막힘 |
+| **재부팅 + 시계 조작** | **막지 못한다.** 재부팅 후에는 벽시계만 남는다. 수용하는 한계다 — 대기 상한이 15분이고 재부팅 자체에 시간이 들어 이득이 작으며, 실질 방어는 Argon2id 비용(SEC-02)이다 |
+| 시계를 뒤로 돌림 | 벽시계 기한이 늘어 더 오래 기다릴 뿐 (사용자만 손해) |
 - 해제 성공 시 두 값을 0으로 초기화한다.
 - 생체 해제 실패는 `BiometricPrompt` 자체 잠금에 맡기고 이 카운터에 더하지 않는다.
 - **데이터를 자동 삭제하지 않는다** (SEC-09 / [02](02-crypto.md) 제외 대안).

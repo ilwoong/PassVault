@@ -27,9 +27,12 @@ io.github.ilwoong.passvault
 │   ├─ VaultMetaStore.kt         // DM-01. 원자적 교체 책임
 │   ├─ VaultKeyManager.kt        // 생성/해제/변경 조율 (CRY-10, 11, 15)
 │   ├─ SessionManager.kt         // 상태머신 + VK 보유 (LOCK-01~04)
+│   ├─ Backoff.kt                // LOCK-05 대기 계산. 순수 함수
+│   ├─ Clocks.kt                 // 벽시계·단조 시계·부팅 번호 인터페이스
 │   └─ Secrets.kt                // ByteArray/CharArray 제로화 헬퍼 (SEC-12)
 ├─ data/
 │   ├─ db/                       // Room: Entity, DAO, Database, Migration
+│   │                            //   VaultDatabaseHolder: 해제 시 열고 잠금 시 닫는다
 │   ├─ repo/                     // EntryRepository, SettingsRepository
 │   └─ policy/                   // PasswordPolicyEvaluator (DM-10) — 순수 코틀린
 ├─ backup/                    // BackupWriter, BackupReader, 포맷 정의 (07)
@@ -56,6 +59,12 @@ ui  →  data  →  security
 - `data` 는 `ui` 를 참조하지 않는다.
 - `security/*` 와 `data/policy/*` 는 Android 프레임워크 타입을 쓰지 않는다
   (Keystore·BiometricPrompt를 쓰는 `BiometricKeyStore` 만 예외). JVM 단위 테스트 대상이다.
+- **잠금 시 DB 를 닫는 문제** (LOCK-04 3단계): `SessionManager`(security)는 `VaultDatabase`(data)를
+  참조할 수 없다. 그래서 security 에 `SessionResource` 인터페이스(`onUnlocked(vk)` / `onLocked()`)를 두고
+  data 의 `VaultDatabaseHolder` 가 구현한다. 의존 방향은 data → security 그대로다.
+  `SessionManager` 는 LOCK-04 순서대로 동기 호출하므로 잠긴 뒤 DB 가 열려 있는 틈이 없다.
+- Android 시계(`SystemClock`, `Settings.Global.BOOT_COUNT`)는 `Clocks` 인터페이스 뒤에 둔다.
+  구현은 `di/` 에 있다.
 
 ## ARC-04 라이브러리
 

@@ -21,13 +21,15 @@ kdfParallelism: Int
 wrappedVkByMk: ByteArray   // nonce(12) || ciphertext || tag(16)
 wrappedVkByBio: ByteArray? // null = 생체 해제 미설정
 failedAttempts: Int        // LOCK-05
-lockoutUntilEpochMs: Long  // 0 = 잠김 없음
+lockoutUntilEpochMs: Long  // 0 = 잠김 없음. 벽시계 기한
 vaultCreatedAtEpochMs: Long
+lockoutBootCount: Int      // LOCK-05. 잠김이 시작된 부팅 번호
+lockoutUntilElapsedMs: Long // LOCK-05. 같은 부팅 안에서만 유효한 단조 시계 기한
 ```
 
 #### 디스크 레이아웃 (metaVersion = 1)
 
-**176 바이트 고정 길이.** 정수는 전부 big-endian. 가변 길이 필드를 두지 않아 파서에 모호함이 없다.
+**188 바이트 고정 길이.** 정수는 전부 big-endian. 가변 길이 필드를 두지 않아 파서에 모호함이 없다.
 
 ```
 오프셋  크기  필드
@@ -43,7 +45,12 @@ vaultCreatedAtEpochMs: Long
  156     4   failedAttempts        (i32)
  160     8   lockoutUntilEpochMs   (i64)
  168     8   vaultCreatedAtEpochMs (i64)
+ 176     4   lockoutBootCount      (i32)
+ 180     8   lockoutUntilElapsedMs (i64)
 ```
+
+> M3 에서 마지막 두 필드를 덧붙였다 (176 → 188). 배포 전이라 v1 을 그대로 확장했다.
+> 배포 후에는 레이아웃을 바꿀 때 반드시 `metaVersion` 을 올린다.
 
 VK 길이(32B)가 바뀌면 `metaVersion` 을 올린다.
 
@@ -53,7 +60,7 @@ VK 길이(32B)가 바뀌면 `metaVersion` 을 올린다.
 |------|------|------|
 | `Absent` | 파일 없음 | 금고 없음 → 온보딩 ([UX-01](05-ui-flows.md)) |
 | `Present` | 크기·magic·version 모두 정상 | 해제 화면 |
-| `Corrupt` | 파일은 있는데 크기 ≠ 176, magic 불일치, 알 수 없는 version, `hasBioWrap` ∉ {0,1}, KDF 파라미터가 [CRY-09](02-crypto.md) 산출 범위 밖(m ∉ [32 MiB, 64 MiB], t ∉ [1, 8], p ≠ 2) | "금고를 열 수 없습니다" + 백업 복구 안내 ([ARC-06](04-architecture.md)) |
+| `Corrupt` | 파일은 있는데 크기 ≠ 188, magic 불일치, 알 수 없는 version, `hasBioWrap` ∉ {0,1}, KDF 파라미터가 [CRY-09](02-crypto.md) 산출 범위 밖(m ∉ [32 MiB, 64 MiB], t ∉ [1, 8], p ≠ 2) | "금고를 열 수 없습니다" + 백업 복구 안내 ([ARC-06](04-architecture.md)) |
 
 KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일은 CRY-09 캘리브레이션만이 쓰므로
 그 범위 밖의 값은 손상이다. 읽기에서 걸러야 사용자가 열 수 없는 금고에 비밀번호를 입력하게 되지 않는다
@@ -65,7 +72,7 @@ KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일�
 #### 쓰기는 원자적 교체만 허용한다 (CRY-15)
 
 ```
-1. vault_meta.tmp 에 176 바이트 전체를 쓴다
+1. vault_meta.tmp 에 188 바이트 전체를 쓴다
 2. fsync (FileDescriptor.sync)
 3. rename(vault_meta.tmp → vault_meta)   ← 같은 파일시스템에서 원자적
 ```
