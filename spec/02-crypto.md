@@ -139,6 +139,13 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
 5. vault_meta 에 저장
 ```
 
+**예외 — 온보딩 직후 (UX-01 4 단계)**: 금고를 방금 만든 같은 흐름에서는 재입력을 요구하지 않는다.
+비밀번호를 방금 두 번 입력한 사용자이고, 기기를 빌린 사람(T-02)이 끼어들 틈이 없다.
+금고 생성 직후 첫 화면에서 한 번만 제안하고, 그 뒤로는 설정에서만 켤 수 있다 (재인증 필요).
+
+**재인증(UX-03)도 LOCK-05 백오프를 적용한다.** 해제된 기기를 빌린 사람이 재인증 대화상자로
+마스터 비밀번호를 추측하는 경로를 막는다. 해제와 같은 실패 카운터를 쓴다.
+
 ### CRY-13 생체 해제
 
 ```
@@ -147,7 +154,15 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
 3. 인증 성공 → VK = Cipher.doFinal(wrapped_vk_by_bio)
 4. KeyPermanentlyInvalidatedException → wrapped_vk_by_bio 삭제 + 생체 설정 OFF
    + "생체 정보가 변경되어 비밀번호로 해제해야 합니다" 안내 (SEC-11)
+5. doFinal 의 GCM 태그 검증 실패(블롭 손상)도 4 와 같이 처리한다
+6. 성공하면 LOCK-05 실패 카운터를 초기화한다 (성공한 해제다)
 ```
+
+- 비밀번호 대기(LOCK-05) 중에도 생체 해제는 허용한다. 생체는 `BiometricPrompt` 자체 잠금이 있고,
+  비밀번호를 여러 번 틀린 정당한 사용자가 지문으로 들어올 수 있어야 한다.
+- 키 생성 사양: API 30+ 는 `setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG)`,
+  API 28–29 는 그 API 가 없으므로 `setUserAuthenticationValidityDurationSeconds(-1)` (매 사용 인증, 생체 전용).
+- `BiometricPrompt` 는 `FragmentActivity` 를 요구한다. `MainActivity` 는 `FragmentActivity` 를 상속한다.
 
 ### CRY-14 생체 해제 비활성 조건
 
@@ -172,6 +187,8 @@ VK를 풀기 위한 정보는 **암호화된 DB 안에 둘 수 없다** (DB를 �
    → 사용자에게 생체 재등록을 안내 (CRY-12)
 7. zeroize(MK')
 ```
+
+Keystore 의 BioKey 도 함께 지운다 (다음 등록 때 새로 만든다).
 
 **DB는 재암호화하지 않는다** (VK가 그대로이므로). 5번의 원자적 교체가 중요하다 —
 중간에 프로세스가 죽으면 금고를 영구히 열 수 없게 된다.

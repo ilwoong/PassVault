@@ -94,7 +94,8 @@ KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일�
 ```
 autoLockSeconds: Int        // 기본 60. 허용: 15 / 30 / 60 / 300 / 0(즉시)
 lockOnBackground: Boolean   // 기본 true
-biometricEnabled: Boolean   // 기본 false. wrappedVkByBio 와 항상 일치해야 함
+// biometricEnabled 는 저장하지 않는다 — vault_meta 의 wrappedVkByBio 유무에서 파생한다 (M6).
+// 따로 저장하면 둘이 어긋날 수 있고, DM-11 5 번 규칙이 그 경우를 다뤄야 한다. 파생하면 어긋날 수 없다.
 clipboardClearSeconds: Int  // 기본 30. 0 = 자동 삭제 안 함
 ```
 
