@@ -1,6 +1,29 @@
 package io.github.ilwoong.passvault.ui.edit
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import io.github.ilwoong.passvault.data.model.CharClassRule
+import io.github.ilwoong.passvault.data.policy.PasswordPolicyEvaluator
+import io.github.ilwoong.passvault.data.policy.PolicyReport
+import io.github.ilwoong.passvault.security.zeroize
+import io.github.ilwoong.passvault.ui.common.PolicyVerdict
+import io.github.ilwoong.passvault.ui.common.ruleText
+import io.github.ilwoong.passvault.ui.copyToCharArray
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -119,6 +142,7 @@ fun EntryEditScreen(
     failed: Boolean,
     onSave: () -> Unit,
     onExit: () -> Unit,
+    nowEpochMs: Long = System.currentTimeMillis(),
 ) {
     var confirmingDiscard by remember { mutableStateOf(false) }
     val leave = { if (form.isDirty) confirmingDiscard = true else onExit() }
@@ -151,6 +175,7 @@ fun EntryEditScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             for (field in form.fields) FieldEditor(field, isTitle = field.key == FieldKey.TITLE)
+            form.policy?.let { PolicySection(form, it, nowEpochMs) }
             if (failed) Text(stringResource(R.string.error_save_failed), color = MaterialTheme.colorScheme.error)
         }
     }
@@ -230,4 +255,121 @@ private fun errorFor(kind: FieldKind) = when (kind) {
     FieldKind.MONTH -> R.string.invalid_month
     FieldKind.YEAR -> R.string.invalid_year
     else -> R.string.invalid_date
+}
+
+/** UX-07: 접을 수 있는 정책 섹션. 기본 접힘 — 기본 입력 흐름을 방해하지 않는다. */
+@Composable
+private fun PolicySection(form: EntryForm, policy: PolicyForm, now: Long) {
+    var expanded by remember { mutableStateOf(false) }
+    val recorded = policy.isValid && policy.toPolicy() != null
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        ListItem(
+            modifier = Modifier.clickable { expanded = !expanded },
+            headlineContent = { Text(stringResource(R.string.policy_section_title)) },
+            supportingContent = {
+                Text(stringResource(if (recorded) R.string.policy_recorded else R.string.policy_not_recorded))
+            },
+            trailingContent = {
+                Icon(
+                    if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = stringResource(if (expanded) R.string.cd_collapse else R.string.cd_expand),
+                )
+            },
+        )
+        if (!expanded) return@OutlinedCard
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NumberField(policy.minLength, R.string.policy_min_length, Modifier.weight(1f), extraError = !policy.minMaxOk)
+                NumberField(policy.maxLength, R.string.policy_max_length, Modifier.weight(1f), extraError = !policy.minMaxOk)
+            }
+            if (!policy.minMaxOk) Text(stringResource(R.string.invalid_min_max), color = MaterialTheme.colorScheme.error)
+            RuleSelector(R.string.policy_upper, policy.upper) { policy.upper = it }
+            RuleSelector(R.string.policy_lower, policy.lower) { policy.lower = it }
+            RuleSelector(R.string.policy_digit, policy.digit) { policy.digit = it }
+            RuleSelector(R.string.policy_symbol, policy.symbol) { policy.symbol = it }
+            OutlinedTextField(
+                state = policy.allowedSymbols,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.policy_allowed_symbols)) },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+            )
+            OutlinedTextField(
+                state = policy.forbiddenSymbols,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.policy_forbidden_symbols)) },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+            )
+            NumberField(policy.maxRepeatRun, R.string.policy_max_repeat, Modifier.fillMaxWidth())
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(value = policy.disallowSpace, role = Role.Switch, onValueChange = { policy.disallowSpace = it }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.policy_disallow_space), Modifier.weight(1f))
+                Switch(checked = policy.disallowSpace, onCheckedChange = null)
+            }
+            NumberField(policy.rotationDays, R.string.policy_rotation_days, Modifier.fillMaxWidth())
+            OutlinedTextField(
+                state = policy.rawNote,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.policy_raw_note)) },
+                placeholder = { Text(stringResource(R.string.policy_raw_note_hint)) },
+                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2),
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
+            )
+            HorizontalDivider()
+            Text(stringResource(R.string.policy_live_check), style = MaterialTheme.typography.labelLarge)
+            LiveCheck(form, policy, now)
+        }
+    }
+}
+
+/** 정책을 적는 즉시 현재 비밀번호를 검사한다. 검사용 사본은 바로 지운다. */
+@Composable
+private fun LiveCheck(form: EntryForm, policy: PolicyForm, now: Long) {
+    val draft = if (policy.isValid) policy.toPolicy() else null
+    val report = draft?.let { p ->
+        val chars = (form.passwordText ?: "").copyToCharArray()
+        try {
+            PasswordPolicyEvaluator.evaluate(chars, p, form.passwordUpdatedAtForCheck(now), now)
+        } finally {
+            chars.zeroize()
+        }
+    } ?: PolicyReport.NotConfigured
+    PolicyVerdict(draft, report)
+}
+
+@Composable
+private fun NumberField(state: TextFieldState, @StringRes label: Int, modifier: Modifier, extraError: Boolean = false) {
+    val invalid = !isPositiveOrEmpty(state)
+    OutlinedTextField(
+        state = state,
+        modifier = modifier,
+        label = { Text(stringResource(label)) },
+        lineLimits = TextFieldLineLimits.SingleLine,
+        isError = invalid || extraError,
+        supportingText = if (invalid) { { Text(stringResource(R.string.invalid_positive)) } } else null,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RuleSelector(@StringRes label: Int, value: CharClassRule, onChange: (CharClassRule) -> Unit) {
+    val options = listOf(CharClassRule.UNKNOWN, CharClassRule.REQUIRED, CharClassRule.ALLOWED, CharClassRule.FORBIDDEN)
+    Column {
+        Text(stringResource(label), style = MaterialTheme.typography.labelMedium)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { i, rule ->
+                SegmentedButton(
+                    selected = value == rule,
+                    onClick = { onChange(rule) },
+                    shape = SegmentedButtonDefaults.itemShape(i, options.size),
+                ) { Text(ruleText(rule)) }
+            }
+        }
+    }
 }

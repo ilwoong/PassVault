@@ -7,7 +7,6 @@ import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.model.EntryContent
 import io.github.ilwoong.passvault.data.model.EntryDraft
 import io.github.ilwoong.passvault.data.model.EntryType
-import io.github.ilwoong.passvault.data.model.PasswordPolicy
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -40,10 +39,7 @@ internal fun validate(kind: FieldKind, text: String): Boolean = when {
     else -> true
 }
 
-/**
- * UX-06 편집 상태. 타입은 생성 시 정해지고 바뀌지 않는다.
- * 정책([PasswordPolicy])은 그대로 넘긴다 — 편집 UI 는 M5 에서 붙는다.
- */
+/** UX-06 편집 상태. 타입은 생성 시 정해지고 바뀌지 않는다. 로그인이면 정책(UX-07)도 편집한다. */
 class EntryForm(val type: EntryType, private val existing: Entry?) {
 
     val fields: List<FormField> = buildList {
@@ -79,21 +75,38 @@ class EntryForm(val type: EntryType, private val existing: Entry?) {
         }
     }
 
-    private val policy: PasswordPolicy? = (existing?.content as? EntryContent.Login)?.policy
+    /** UX-07. 로그인 항목에만 있다. */
+    val policy: PolicyForm? =
+        if (type == EntryType.LOGIN) PolicyForm((existing?.content as? EntryContent.Login)?.policy) else null
 
     val isNew: Boolean get() = existing == null
 
     val titleOk: Boolean get() = field(FieldKey.TITLE).state.text.isNotBlank()
 
-    val isValid: Boolean get() = titleOk && fields.all { it.isValid }
+    val isValid: Boolean get() = titleOk && fields.all { it.isValid } && policy?.isValid != false
 
-    val isDirty: Boolean get() = fields.any { !it.state.text.contentEquals(it.initial) }
+    val isDirty: Boolean get() = fields.any { !it.state.text.contentEquals(it.initial) } || policy?.isDirty == true
+
+    /** UX-07 실시간 검사용. 로그인이 아니면 null. */
+    val passwordText: CharSequence? get() = fields.firstOrNull { it.key == FieldKey.PASSWORD }?.state?.text
+
+    /**
+     * 실시간 검사가 쓸 비밀번호 변경 시각. 비밀번호를 바꿨다면 저장 시 지금으로 바뀐다 (Repository 규칙과 같다).
+     */
+    fun passwordUpdatedAtForCheck(now: Long): Long? {
+        val pw = fields.firstOrNull { it.key == FieldKey.PASSWORD } ?: return null
+        val changed = !pw.state.text.contentEquals(pw.initial)
+        return if (existing == null || changed) pw.state.text.takeIf { it.isNotEmpty() }?.let { now }
+        else existing.passwordUpdatedAtEpochMs
+    }
 
     /** SEC-12 예외: 저장 경로는 String 이다 (CRY-16). 빈 칸은 null 로 저장한다. */
     fun toDraft(): EntryDraft {
         fun v(k: FieldKey) = field(k).state.text.toString().takeIf { it.isNotBlank() }
         val content = when (type) {
-            EntryType.LOGIN -> EntryContent.Login(v(FieldKey.USERNAME), v(FieldKey.PASSWORD), v(FieldKey.URL), v(FieldKey.MEMO), policy)
+            EntryType.LOGIN -> EntryContent.Login(
+                v(FieldKey.USERNAME), v(FieldKey.PASSWORD), v(FieldKey.URL), v(FieldKey.MEMO), policy?.toPolicy(),
+            )
             EntryType.NOTE -> EntryContent.Note(field(FieldKey.BODY).state.text.toString())
             EntryType.CARD -> EntryContent.Card(
                 v(FieldKey.CARDHOLDER), v(FieldKey.NUMBER), v(FieldKey.BRAND),

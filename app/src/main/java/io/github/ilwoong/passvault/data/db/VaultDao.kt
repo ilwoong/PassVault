@@ -8,6 +8,14 @@ import io.github.ilwoong.passvault.data.model.EntrySummary
 import io.github.ilwoong.passvault.data.model.EntryType
 import kotlinx.coroutines.flow.Flow
 
+/** DM-03 변경 주기 재계산 입력. 비밀번호 컬럼을 담지 않는다. */
+data class RotationRow(
+    val entryId: String,
+    val passwordUpdatedAtEpochMs: Long?,
+    val rotationDays: Int?,
+    val hasRotationDue: Boolean,
+)
+
 /** 한 항목의 모든 행. 타입에 맞는 상세 하나만 null 이 아니다. */
 class LoadedEntry(
     val entry: EntryEntity,
@@ -45,6 +53,20 @@ abstract class VaultDao {
     /** 상세 화면이 저장 후 다시 읽을 신호. 저장은 항상 entry 행을 갱신한다. */
     @Query("SELECT * FROM entry WHERE id = :id")
     abstract fun observeEntryRow(id: String): Flow<EntryEntity?>
+
+    /** DM-03: 비밀번호를 읽지 않고 변경 시각과 주기만 읽는다. */
+    @Query(
+        """
+        SELECT e.id AS entryId, l.passwordUpdatedAtEpochMs, p.rotationDays, e.hasRotationDue
+        FROM entry e
+        JOIN login_detail l ON l.entryId = e.id
+        LEFT JOIN password_policy p ON p.entryId = e.id
+        """,
+    )
+    abstract suspend fun rotationRows(): List<RotationRow>
+
+    @Query("UPDATE entry SET hasRotationDue = :due WHERE id = :id")
+    abstract suspend fun setRotationDue(id: String, due: Boolean)
 
     /** 한 행만 UPDATE 한다. REPLACE 는 CASCADE 로 상세를 지운다. */
     @Query("UPDATE entry SET isFavorite = :favorite WHERE id = :id")

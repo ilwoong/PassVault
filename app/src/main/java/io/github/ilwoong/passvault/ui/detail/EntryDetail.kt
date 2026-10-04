@@ -49,7 +49,11 @@ import io.github.ilwoong.passvault.R
 import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.model.EntryContent
 import io.github.ilwoong.passvault.data.repo.EntryRepository
+import io.github.ilwoong.passvault.data.policy.PasswordPolicyEvaluator
+import io.github.ilwoong.passvault.security.zeroize
+import io.github.ilwoong.passvault.ui.common.PolicyVerdict
 import io.github.ilwoong.passvault.ui.common.SecureClipboard
+import io.github.ilwoong.passvault.ui.common.policySummary
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -156,6 +160,7 @@ fun EntryDetailScreen(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onCopy: (String) -> Unit,
+    nowEpochMs: Long = System.currentTimeMillis(),
 ) {
     // 표시 상태는 저장하지 않는다 — 화면을 떠나면 다시 가려진다 (UX-05, UX-00b)
     val revealed = remember { mutableStateMapOf<Int, Boolean>() }
@@ -200,6 +205,7 @@ fun EntryDetailScreen(
                 )
                 HorizontalDivider()
             }
+            (entry.content as? EntryContent.Login)?.let { PolicyPanel(entry, it, nowEpochMs, onRecord = onEdit) }
         }
     }
 
@@ -244,3 +250,34 @@ private fun FieldRow(field: DetailField, revealed: Boolean, onToggle: () -> Unit
         }
     }
 }
+
+/** UX-05: 로그인 항목의 정책 요약·원문·판정과 비밀번호 경과일. */
+@Composable
+private fun PolicyPanel(entry: Entry, login: EntryContent.Login, now: Long, onRecord: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.policy_section_title), style = MaterialTheme.typography.titleSmall)
+        entry.passwordUpdatedAtEpochMs?.let {
+            Text(stringResource(R.string.policy_days_since_change, ((now - it) / DAY_MS).toInt().coerceAtLeast(0)))
+        }
+        val policy = login.policy
+        if (policy == null) {
+            // DM-10 NotConfigured: 아무 판정도 하지 않고 기록을 유도한다
+            TextButton(onClick = onRecord) { Text(stringResource(R.string.policy_record_prompt)) }
+            return@Column
+        }
+        for (line in policySummary(policy)) Text("• $line")
+        // 원문은 검사하지 않고 그대로 보여준다 (DM-10)
+        policy.rawNote?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        val report = remember(login, entry.passwordUpdatedAtEpochMs, now) {
+            val chars = login.password.orEmpty().toCharArray()
+            try {
+                PasswordPolicyEvaluator.evaluate(chars, policy, entry.passwordUpdatedAtEpochMs, now)
+            } finally {
+                chars.zeroize()
+            }
+        }
+        PolicyVerdict(policy, report)
+    }
+}
+
+private const val DAY_MS = 24L * 60 * 60 * 1000

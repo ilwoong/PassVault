@@ -44,6 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -84,6 +87,11 @@ class EntryListViewModel @Inject constructor(
         .flatMapLatest { (q, t) -> repo.observeSummaries(t, q) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** DM-03: 시간이 지나 낡은 변경 주기 캐시를 다시 계산한다. 비밀번호를 읽지 않는다. */
+    fun refreshRotationDue() {
+        viewModelScope.launch { repo.refreshRotationDue() }
+    }
+
     fun toggleFavorite(id: String, favorite: Boolean) {
         viewModelScope.launch { repo.setFavorite(id, favorite) }
     }
@@ -98,6 +106,8 @@ fun EntryListRoute(
     onAdd: (EntryType) -> Unit,
     vm: EntryListViewModel = hiltViewModel(),
 ) {
+    // UX-07: 목록이 시작될 때마다 (해제 직후, 상세에서 돌아올 때, 포그라운드 복귀)
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.refreshRotationDue() }
     val entries by vm.entries.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
     val type by vm.type.collectAsStateWithLifecycle()
@@ -212,7 +222,24 @@ private fun EntryRow(e: EntrySummary, onOpen: (String) -> Unit, onToggleFavorite
     ListItem(
         modifier = Modifier.clickable { onOpen(e.id) },
         headlineContent = { Text(e.title) },
-        supportingContent = e.subtitle?.let { { Text(it) } },
+        supportingContent = if (e.subtitle != null || e.hasPolicyViolation || e.hasRotationDue) {
+            {
+                Column {
+                    e.subtitle?.let { Text(it) }
+                    // 캐시 컬럼만 읽는다 — 목록에서 비밀번호를 복호화하지 않는다 (DM-03)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (e.hasPolicyViolation) {
+                            Badge(stringResource(R.string.badge_violation), MaterialTheme.colorScheme.errorContainer)
+                        }
+                        if (e.hasRotationDue) {
+                            Badge(stringResource(R.string.badge_rotation), MaterialTheme.colorScheme.tertiaryContainer)
+                        }
+                    }
+                }
+            }
+        } else {
+            null
+        },
         leadingContent = { TypeBadge(e.type) },
         trailingContent = {
             IconToggleButton(checked = e.isFavorite, onCheckedChange = { onToggleFavorite(e.id, it) }) {
@@ -223,6 +250,13 @@ private fun EntryRow(e: EntrySummary, onOpen: (String) -> Unit, onToggleFavorite
             }
         },
     )
+}
+
+@Composable
+private fun Badge(text: String, color: Color) {
+    Surface(color = color, shape = MaterialTheme.shapes.small) {
+        Text(text, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+    }
 }
 
 @Composable

@@ -107,6 +107,17 @@ class EntryRepository(
         return id
     }
 
+    /**
+     * DM-03: 시간이 지나 낡은 hasRotationDue 를 다시 계산한다. 바뀐 행만 쓴다.
+     * 비밀번호를 읽지 않는다 — 변경 시각과 주기만 쓴다.
+     */
+    suspend fun refreshRotationDue(now: Long = clock()) {
+        for (row in dao.rotationRows()) {
+            val due = PasswordPolicyEvaluator.isRotationDue(row.passwordUpdatedAtEpochMs, row.rotationDays, now)
+            if (due != row.hasRotationDue) dao.setRotationDue(row.entryId, due)
+        }
+    }
+
     /** 상세·정책은 CASCADE 로 함께 지워진다. 휴지통은 없다 (UX-05). */
     suspend fun delete(id: String) {
         dao.deleteEntry(id)

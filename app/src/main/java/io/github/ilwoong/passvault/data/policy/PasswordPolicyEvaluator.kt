@@ -37,6 +37,19 @@ sealed interface PolicyReport {
     }
 }
 
+/** UX-07: 아무것도 기록하지 않았다. 이런 정책은 저장하지 않는다 (정책 행 없음 = NotConfigured). */
+val PasswordPolicy.isEmpty: Boolean
+    get() = minLength == null && maxLength == null && maxRepeatRun == null && rotationDays == null &&
+        !disallowSpace && allowedSymbols.isNullOrEmpty() && forbiddenSymbols.isNullOrEmpty() &&
+        rawNote.isNullOrBlank() &&
+        listOf(upperRule, lowerRule, digitRule, symbolRule).all { it == CharClassRule.UNKNOWN }
+
+/** UX-05: 위반을 만들 수 있는 규칙이 하나라도 있다. 없으면 충족·위반 판정을 표시하지 않는다. */
+val PasswordPolicy.hasCheckableRule: Boolean
+    get() = minLength != null || maxLength != null || maxRepeatRun != null || rotationDays != null ||
+        disallowSpace || !allowedSymbols.isNullOrEmpty() || !forbiddenSymbols.isNullOrEmpty() ||
+        listOf(upperRule, lowerRule, digitRule, symbolRule).any { it == CharClassRule.REQUIRED || it == CharClassRule.FORBIDDEN }
+
 /** DM-10. Android 의존성 없는 순수 함수 (TST-02). */
 object PasswordPolicyEvaluator {
 
@@ -69,14 +82,16 @@ object PasswordPolicyEvaluator {
         if (policy.disallowSpace && password.any { it.isWhitespace() }) v += PolicyViolation.CONTAINS_SPACE
         policy.maxRepeatRun?.let { if (longestRun(password) > it) v += PolicyViolation.REPEAT_RUN }
 
-        val rotationDays = policy.rotationDays
-        if (rotationDays != null && passwordUpdatedAtEpochMs != null &&
-            nowEpochMs - passwordUpdatedAtEpochMs >= rotationDays * DAY_MS
-        ) {
-            v += PolicyViolation.ROTATION_DUE
-        }
+        if (isRotationDue(passwordUpdatedAtEpochMs, policy.rotationDays, nowEpochMs)) v += PolicyViolation.ROTATION_DUE
         return PolicyReport.Evaluated(v)
     }
+
+    /**
+     * DM-10 변경 주기 판정. 목록 캐시 재계산(DM-03)도 이 함수를 쓴다 — 비밀번호를 읽지 않는다.
+     */
+    fun isRotationDue(passwordUpdatedAtEpochMs: Long?, rotationDays: Int?, nowEpochMs: Long): Boolean =
+        rotationDays != null && passwordUpdatedAtEpochMs != null &&
+            nowEpochMs - passwordUpdatedAtEpochMs >= rotationDays * DAY_MS
 
     private fun MutableSet<PolicyViolation>.checkClass(
         rule: CharClassRule,
