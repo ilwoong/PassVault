@@ -24,6 +24,7 @@ Kotlin + Compose + Room/SQLCipher. 로컬 전용(네트워크 권한 없음), �
 | 백업·복구 작업 | [07-backup](spec/07-backup.md) — `BK-*` |
 | 완료 판정 | [08-testing](spec/08-testing.md) — `TST-*` |
 | 다음에 뭘 할지 | [09-roadmap](spec/09-roadmap.md) — `M0`~`M9` |
+| 보안 요구사항의 구현·검증 근거 | [10-traceability](spec/10-traceability.md) |
 
 ## 작업 루프
 
