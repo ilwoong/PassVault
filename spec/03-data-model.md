@@ -25,7 +25,62 @@ lockoutUntilEpochMs: Long  // 0 = 잠김 없음
 vaultCreatedAtEpochMs: Long
 ```
 
-금고가 존재하는지 여부는 `vault_meta` 파일의 존재로 판단한다. 이것이 온보딩 분기 조건이다 ([UX-01](05-ui-flows.md)).
+#### 디스크 레이아웃 (metaVersion = 1)
+
+**176 바이트 고정 길이.** 정수는 전부 big-endian. 가변 길이 필드를 두지 않아 파서에 모호함이 없다.
+
+```
+오프셋  크기  필드
+   0     6   magic "PVMETA" (ASCII)
+   6     1   metaVersion = 1
+   7     1   hasBioWrap (0 | 1)
+   8    16   kdfSalt
+  24     4   kdfMemoryKiB   (u32)
+  28     4   kdfIterations  (u32)
+  32     4   kdfParallelism (u32)
+  36    60   wrappedVkByMk  = nonce(12) || ciphertext(32) || tag(16)
+  96    60   wrappedVkByBio = iv(12) || ciphertext(32) || tag(16). hasBioWrap = 0 이면 전부 0
+ 156     4   failedAttempts        (i32)
+ 160     8   lockoutUntilEpochMs   (i64)
+ 168     8   vaultCreatedAtEpochMs (i64)
+```
+
+VK 길이(32B)가 바뀌면 `metaVersion` 을 올린다.
+
+#### 읽기 결과는 세 가지로 구분한다
+
+| 상태 | 조건 | 처리 |
+|------|------|------|
+| `Absent` | 파일 없음 | 금고 없음 → 온보딩 ([UX-01](05-ui-flows.md)) |
+| `Present` | 크기·magic·version 모두 정상 | 해제 화면 |
+| `Corrupt` | 파일은 있는데 크기 ≠ 176, magic 불일치, 알 수 없는 version, `hasBioWrap` ∉ {0,1}, KDF 파라미터가 [CRY-09](02-crypto.md) 산출 범위 밖(m ∉ [32 MiB, 64 MiB], t ∉ [1, 8], p ≠ 2) | "금고를 열 수 없습니다" + 백업 복구 안내 ([ARC-06](04-architecture.md)) |
+
+KDF 파라미터 범위 검사를 읽기 단계에서 하는 이유: v1 파일은 CRY-09 캘리브레이션만이 쓰므로
+그 범위 밖의 값은 손상이다. 읽기에서 걸러야 사용자가 열 수 없는 금고에 비밀번호를 입력하게 되지 않는다
+(그렇지 않으면 비트 하나가 뒤집힌 `m` 이 수 TB 할당을 시도하다 해제 시점에야 실패한다).
+
+**`Corrupt` 를 `Absent` 로 취급하면 안 된다.** 그렇게 하면 온보딩으로 빠져 새 금고를 만들면서
+기존 메타를 덮어써 데이터가 영구히 사라진다. 이 구분이 이 파일 설계에서 가장 중요한 규칙이다.
+
+#### 쓰기는 원자적 교체만 허용한다 (CRY-15)
+
+```
+1. vault_meta.tmp 에 176 바이트 전체를 쓴다
+2. fsync (FileDescriptor.sync)
+3. rename(vault_meta.tmp → vault_meta)   ← 같은 파일시스템에서 원자적
+```
+
+- `vault_meta` 를 **쓰기 모드로 직접 열지 않는다.** 중간에 프로세스가 죽어도 대상 파일은 항상 구 버전 또는 신 버전 중 하나로 온전하다.
+- 읽기는 `vault_meta.tmp` 를 무시한다. 남아 있는 `.tmp` 는 중단된 쓰기의 흔적일 뿐 진실의 원천이 아니다.
+
+#### 보호 범위
+
+`wrappedVkByMk` 는 GCM 태그로 무결성이 보장되고, salt·KDF 파라미터는 MK 값 자체에 묶여 있어
+변조 시 언래핑이 실패한다 (CRY-03). `failedAttempts` / `lockoutUntilEpochMs` 는 **인증되지 않는다** —
+이 파일을 고쳐 쓸 수 있는 공격자는 앱 전용 저장소에 쓰기 권한을 가진 것이고, 이는 루팅 기기로
+[01](01-threat-model.md) Out of scope 이다.
+
+금고가 존재하는지 여부는 위 `Absent` / 그 외로 판단한다. 이것이 온보딩 분기 조건이다.
 
 ### DM-02 설정 스키마
 

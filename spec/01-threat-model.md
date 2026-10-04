@@ -55,5 +55,5 @@
 | SEC-08 | 외부에 노출되는 컴포넌트를 두지 않는다 (`exported=false`, Content Provider·Deep link 없음) | [TST-13](08-testing.md) |
 | SEC-09 | 잠금 해제 실패 횟수에 따라 지연 백오프를 적용한다. (데이터 자동 파기는 하지 않는다 — 오조작 피해가 더 크다) | [LOCK-05](06-lock-policy.md) |
 | SEC-10 | 릴리스 빌드에서 비밀·키·평문을 로그에 남기지 않는다. 비밀을 담는 타입은 `toString()`을 마스킹한다 | [TST-12](08-testing.md) |
-| SEC-11 | 생체 정보가 추가 등록되면 생체 해제용 Keystore 키를 무효화한다 (`setInvalidatedByBiometricEnrollment(true)`). 이후 마스터 비밀번호로만 해제 | [CRY-08](02-crypto.md) |
+| SEC-11 | 생체 정보가 추가 등록되면 생체 해제용 Keystore 키를 무효화한다 (`setInvalidatedByBiometricEnrollment(true)`). 이후 마스터 비밀번호로만 해제 | [CRY-07](02-crypto.md), CRY-13 |
 | SEC-12 | 키 바이트는 `ByteArray`로 다루고 사용 후 즉시 0으로 채운다. 비밀을 `String`에 담지 않는다 (완화 조치이며 완전한 보장은 아님 — Out of scope 참고) | [TST-04](08-testing.md) |
