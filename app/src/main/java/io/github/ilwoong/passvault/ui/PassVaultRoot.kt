@@ -9,6 +9,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import io.github.ilwoong.passvault.ui.backup.BackupFilePicker
+import io.github.ilwoong.passvault.ui.backup.ProvideBackupFilePicker
 import io.github.ilwoong.passvault.ui.backup.RestoreRoute
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -30,9 +32,10 @@ import io.github.ilwoong.passvault.ui.unlock.UnlockRoute
 /**
  * UX-00: 세션 상태로 최상위 분기를 고른다. 분기가 바뀌면 이전 분기의 컴포지션·ViewModel 이 함께 사라진다.
  * UX-06: 앱의 모든 입력란에 IME 개인화 학습 차단을 건다. 키보드 입력은 [onTextInput] 으로 알린다 (LOCK-03).
+ * 백업 파일 선택기의 결과는 분기 밖인 여기서 받는다 — 잠겨서 금고 분기가 사라진 뒤에도 와야 한다 (LOCK-03).
  */
 @Composable
-fun PassVaultRoot(session: SessionManager, onTextInput: () -> Unit = {}) = NoPersonalizedLearning(onTextInput) {
+fun PassVaultRoot(session: SessionManager, backupFilePicker: BackupFilePicker, onTextInput: () -> Unit = {}) = NoPersonalizedLearning(onTextInput) {
     val state by session.state.collectAsStateWithLifecycle()
     val branch = when (state) {
         SessionState.NoVault, SessionState.Creating -> "onboarding"
@@ -40,11 +43,13 @@ fun PassVaultRoot(session: SessionManager, onTextInput: () -> Unit = {}) = NoPer
         SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> "unlock"
         SessionState.Unlocked -> VAULT_BRANCH
     }
-    BranchScope(branch) {
-        when (state) {
-            SessionState.NoVault, SessionState.Creating -> OnboardingRoute(creating = state == SessionState.Creating)
-            SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> LockedBranch(state)
-            SessionState.Unlocked -> VaultNavHost()
+    ProvideBackupFilePicker(backupFilePicker) {
+        BranchScope(branch) {
+            when (state) {
+                SessionState.NoVault, SessionState.Creating -> OnboardingRoute(creating = state == SessionState.Creating)
+                SessionState.Corrupt, SessionState.Locked, SessionState.Unlocking -> LockedBranch(state)
+                SessionState.Unlocked -> VaultNavHost()
+            }
         }
     }
 }

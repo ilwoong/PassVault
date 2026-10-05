@@ -51,7 +51,7 @@ io.github.ilwoong.passvault
 │   ├─ detail/                   // UX-05
 │   ├─ edit/                     // UX-06, UX-07
 │   ├─ settings/                 // UX-03, UX-08~UX-10, UX-12
-│   └─ backup/                   // UX-11 내보내기·가져오기·복구 (BK-03~05)
+│   └─ backup/                   // UX-11 내보내기·가져오기·복구 (BK-03~05), 선택기 결과 보관 (LOCK-03)
 └─ di/                        // Hilt 모듈, Android 시계 구현
 ```
 

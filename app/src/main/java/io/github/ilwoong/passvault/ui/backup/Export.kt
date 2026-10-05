@@ -2,8 +2,6 @@ package io.github.ilwoong.passvault.ui.backup
 
 import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,7 +40,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.ilwoong.passvault.R
 import io.github.ilwoong.passvault.backup.BackupCodec
 import io.github.ilwoong.passvault.data.repo.EntryRepository
-import io.github.ilwoong.passvault.security.AutoLock
 import io.github.ilwoong.passvault.security.SessionManager
 import io.github.ilwoong.passvault.security.UnlockOutcome
 import io.github.ilwoong.passvault.security.zeroize
@@ -54,7 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-enum class ExportStep { REAUTH, PASSWORD, SAME_AS_MASTER, PICK_FILE, WRITING, DONE }
+enum class ExportStep { PICK_FILE, REAUTH, PASSWORD, SAME_AS_MASTER, WRITING, DONE }
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
@@ -62,9 +59,9 @@ class ExportViewModel @Inject constructor(
     private val session: SessionManager,
     private val repo: EntryRepository,
     private val codec: BackupCodec,
-    private val autoLock: AutoLock,
+    private val picker: BackupFilePicker,
 ) : ViewModel() {
-    var step by mutableStateOf(ExportStep.REAUTH)
+    var step by mutableStateOf(ExportStep.PICK_FILE)
         private set
     var reauthMessage by mutableStateOf<UnlockMessage?>(null)
         private set
@@ -79,10 +76,28 @@ class ExportViewModel @Inject constructor(
     var doneName by mutableStateOf("")
         private set
 
-    /** 파일 선택기를 기다리는 동안만 들고 있다. 쓰고 나면 지운다. */
+    /** BK-03 1 단계에서 고른 위치. 선택기가 빈 문서를 만들어 두었다. 기록을 시작하면 비운다. */
+    private var target: Uri? = null
+
+    /** 이 화면에서 이미 재인증했다. 기록에 실패해 위치를 다시 고를 때 또 묻지 않는다. */
+    private var reauthenticated = false
+
+    /** 마스터와 같다는 경고에 답하는 동안과 기록하는 동안만 들고 있다. */
     private var backupPassword: CharArray? = null
 
-    /** BK-03 1 단계 (UX-03) */
+    init {
+        // BK-03 1 단계의 결과. 고르는 사이에 잠겼다면 해제된 뒤에 만들어진 이 화면이 이어받는다 (LOCK-03)
+        viewModelScope.launch {
+            picker.picked.collect { picker.take(BackupFilePicker.Purpose.EXPORT)?.let(::onLocationChosen) }
+        }
+    }
+
+    private fun onLocationChosen(uri: Uri) {
+        target = uri
+        step = if (reauthenticated) ExportStep.PASSWORD else ExportStep.REAUTH
+    }
+
+    /** BK-03 2 단계 (UX-03) */
     fun reauthenticate(password: CharArray) {
         viewModelScope.launch {
             val outcome = try {
@@ -91,7 +106,10 @@ class ExportViewModel @Inject constructor(
                 password.zeroize()
             }
             when (outcome) {
-                UnlockOutcome.Success -> step = ExportStep.PASSWORD
+                UnlockOutcome.Success -> {
+                    reauthenticated = true
+                    step = ExportStep.PASSWORD
+                }
                 UnlockOutcome.WrongPassword -> reauthMessage = UnlockMessage.WRONG_PASSWORD
                 is UnlockOutcome.LockedOut -> lockoutMs = outcome.remainingMs
                 else -> reauthMessage = UnlockMessage.CANNOT_OPEN
@@ -99,34 +117,30 @@ class ExportViewModel @Inject constructor(
         }
     }
 
-    /** BK-03 2 단계. 마스터와 같으면 경고한다 (실패 횟수에 넣지 않는 비교). */
+    /** BK-03 3 단계. 마스터와 같으면 경고한다 (실패 횟수에 넣지 않는 비교). 아니면 바로 기록한다. */
     fun setBackupPassword(password: CharArray) {
         working = true
         viewModelScope.launch {
             val same = session.matchesMasterPassword(password)
             replacePassword(password)
             working = false
-            step = if (same) ExportStep.SAME_AS_MASTER else ExportStep.PICK_FILE
+            if (same) step = ExportStep.SAME_AS_MASTER else write()
         }
     }
 
-    fun useAnyway() {
-        step = ExportStep.PICK_FILE
-    }
+    fun useAnyway() = write()
 
     fun reenter() {
         replacePassword(null)
         step = ExportStep.PASSWORD
     }
 
-    /** LOCK-03 예외: 우리가 띄운 파일 선택기 동안 백그라운드 즉시 잠금을 보류한다. */
-    fun pickerOpening() = autoLock.onExternalPickerOpening()
-
-    /** BK-03 3~6 단계. */
-    fun onFileChosen(uri: Uri?) {
-        autoLock.onExternalPickerClosed()
-        if (uri == null) return
+    /** BK-03 4~6 단계. */
+    private fun write() {
+        val uri = target ?: return
         val password = backupPassword ?: return
+        // 여기부터 문서는 기록의 것이다 — 실패하면 아래에서 지운다
+        target = null
         step = ExportStep.WRITING
         error = null
         viewModelScope.launch {
@@ -138,19 +152,22 @@ class ExportViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { BackupFiles.write(context, uri, bytes) }
                 doneCount = entries.size
                 doneName = withContext(Dispatchers.IO) { BackupFiles.displayName(context, uri) }
-                replacePassword(null)
                 step = ExportStep.DONE
             } catch (e: Exception) {
                 withContext(Dispatchers.IO) { BackupFiles.deleteQuietly(context, uri) }
                 error = BackupError.WRITE_FAILED
                 step = ExportStep.PICK_FILE
+            } finally {
+                replacePassword(null)
             }
         }
     }
 
     override fun onCleared() {
         replacePassword(null)
-        autoLock.onExternalPickerClosed()
+        picker.abandoned()
+        // BK-03: 기록하지 않고 떠난다. 선택기가 만든 빈 문서를 백업처럼 남기지 않는다
+        target?.let { BackupFiles.discardIfEmpty(context, it) }
     }
 
     private fun replacePassword(p: CharArray?) {
@@ -165,13 +182,8 @@ class ExportViewModel @Inject constructor(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportRoute(onDone: () -> Unit, vm: ExportViewModel = hiltViewModel()) {
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) {
-        vm.onFileChosen(it)
-    }
-    val choose = {
-        vm.pickerOpening()
-        launcher.launch(BackupFiles.suggestedName(System.currentTimeMillis()))
-    }
+    val picker = LocalBackupFilePicker.current
+    val choose = { picker.chooseExportLocation(BackupFiles.suggestedName(System.currentTimeMillis())) }
     val password = remember { TextFieldState() }
     val confirm = remember { TextFieldState() }
 

@@ -39,7 +39,8 @@ class AutoLock(
 
     /**
      * LOCK-03 예외: 백업용 시스템 파일 선택기(SAF)를 띄우기 직전에 부른다. 결과를 받으면
-     * [onExternalPickerClosed]. 그 사이에는 백그라운드 즉시 잠금만 보류한다 — 유휴·화면 꺼짐은 그대로다.
+     * [onExternalPickerResult], 결과를 기다리던 화면이 사라지면 [onExternalPickerClosed].
+     * 그 사이에는 백그라운드 즉시 잠금만 보류한다 — 유휴·화면 꺼짐은 그대로다.
      */
     fun onExternalPickerOpening() {
         externalPickerOpen = true
@@ -47,6 +48,16 @@ class AutoLock(
 
     fun onExternalPickerClosed() {
         externalPickerOpen = false
+    }
+
+    /**
+     * 선택기가 결과를 돌려줬다 (취소 포함). 사용자가 방금 선택기에서 고르거나 닫았으므로 상호작용으로 센다 —
+     * 다른 창이라 onUserInteraction 을 지나지 않는다. ON_START 의 유휴 판정([onForeground])이 먼저고
+     * 결과는 그 뒤에 온다. 오래 머물렀으면 이미 잠겼다.
+     */
+    fun onExternalPickerResult() {
+        externalPickerOpen = false
+        onInteraction()
     }
 
     /** ON_START. 화면을 그리기 전에 판정한다. */

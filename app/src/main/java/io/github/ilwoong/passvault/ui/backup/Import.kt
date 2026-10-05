@@ -2,8 +2,6 @@ package io.github.ilwoong.passvault.ui.backup
 
 import android.content.Context
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,7 +44,6 @@ import io.github.ilwoong.passvault.backup.BackupCodec
 import io.github.ilwoong.passvault.backup.BackupResult
 import io.github.ilwoong.passvault.data.model.Entry
 import io.github.ilwoong.passvault.data.repo.EntryRepository
-import io.github.ilwoong.passvault.security.AutoLock
 import io.github.ilwoong.passvault.security.SessionManager
 import io.github.ilwoong.passvault.security.UnlockOutcome
 import io.github.ilwoong.passvault.security.zeroize
@@ -58,7 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-enum class ImportStep { REAUTH, PICK_FILE, PASSWORD, DECRYPTING, CONFIRM, REPLACING, DONE }
+enum class ImportStep { PICK_FILE, REAUTH, PASSWORD, DECRYPTING, CONFIRM, REPLACING, DONE }
 
 @HiltViewModel
 class ImportViewModel @Inject constructor(
@@ -66,9 +63,9 @@ class ImportViewModel @Inject constructor(
     private val session: SessionManager,
     private val repo: EntryRepository,
     private val codec: BackupCodec,
-    private val autoLock: AutoLock,
+    private val picker: BackupFilePicker,
 ) : ViewModel() {
-    var step by mutableStateOf(ImportStep.REAUTH)
+    var step by mutableStateOf(ImportStep.PICK_FILE)
         private set
     var reauthMessage by mutableStateOf<UnlockMessage?>(null)
         private set
@@ -84,7 +81,17 @@ class ImportViewModel @Inject constructor(
     /** 복호화된 항목. 확인을 기다리는 동안만 들고 있다. */
     private var decoded: List<Entry>? = null
 
-    /** BK-04 0 단계 (UX-03) — 전량 교체는 파괴적이다 */
+    /** 이 화면에서 이미 재인증했다. 파일을 다시 고를 때 또 묻지 않는다. */
+    private var reauthenticated = false
+
+    init {
+        // BK-04 1 단계의 결과. 고르는 사이에 잠겼다면 해제된 뒤에 만들어진 이 화면이 이어받는다 (LOCK-03)
+        viewModelScope.launch {
+            picker.picked.collect { picker.take(BackupFilePicker.Purpose.IMPORT)?.let(::onFileChosen) }
+        }
+    }
+
+    /** BK-04 3 단계 (UX-03) — 전량 교체는 파괴적이다 */
     fun reauthenticate(password: CharArray) {
         viewModelScope.launch {
             val outcome = try {
@@ -93,7 +100,10 @@ class ImportViewModel @Inject constructor(
                 password.zeroize()
             }
             when (outcome) {
-                UnlockOutcome.Success -> step = ImportStep.PICK_FILE
+                UnlockOutcome.Success -> {
+                    reauthenticated = true
+                    step = ImportStep.PASSWORD
+                }
                 UnlockOutcome.WrongPassword -> reauthMessage = UnlockMessage.WRONG_PASSWORD
                 is UnlockOutcome.LockedOut -> lockoutMs = outcome.remainingMs
                 else -> reauthMessage = UnlockMessage.CANNOT_OPEN
@@ -101,12 +111,8 @@ class ImportViewModel @Inject constructor(
         }
     }
 
-    fun pickerOpening() = autoLock.onExternalPickerOpening()
-
     /** BK-04 1·2 단계 */
-    fun onFileChosen(uri: Uri?) {
-        autoLock.onExternalPickerClosed()
-        if (uri == null) return
+    private fun onFileChosen(uri: Uri) {
         error = null
         viewModelScope.launch {
             val bytes = try {
@@ -124,11 +130,11 @@ class ImportViewModel @Inject constructor(
                 return@launch
             }
             fileBytes = bytes
-            step = ImportStep.PASSWORD
+            step = if (reauthenticated) ImportStep.PASSWORD else ImportStep.REAUTH
         }
     }
 
-    /** BK-04 3·4 단계 */
+    /** BK-04 4·5 단계 */
     fun decrypt(password: CharArray) {
         val bytes = fileBytes ?: return
         step = ImportStep.DECRYPTING
@@ -155,7 +161,7 @@ class ImportViewModel @Inject constructor(
         step = ImportStep.PICK_FILE
     }
 
-    /** BK-04 6 단계: 단일 트랜잭션. 실패하면 기존 데이터가 그대로 남는다. */
+    /** BK-04 7 단계: 단일 트랜잭션. 실패하면 기존 데이터가 그대로 남는다. */
     fun replace() {
         val entries = decoded ?: return
         step = ImportStep.REPLACING
@@ -176,18 +182,14 @@ class ImportViewModel @Inject constructor(
     override fun onCleared() {
         decoded = null
         fileBytes = null
-        autoLock.onExternalPickerClosed()
+        picker.abandoned()
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportRoute(onDone: () -> Unit, vm: ImportViewModel = hiltViewModel()) {
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { vm.onFileChosen(it) }
-    val choose = {
-        vm.pickerOpening()
-        launcher.launch(arrayOf("*/*"))
-    }
+    val choose = LocalBackupFilePicker.current.chooseImportFile
     val password = remember { TextFieldState() }
     val busy = vm.step == ImportStep.DECRYPTING || vm.step == ImportStep.REPLACING
 
@@ -229,7 +231,7 @@ fun ImportRoute(onDone: () -> Unit, vm: ImportViewModel = hiltViewModel()) {
 
     if (vm.step == ImportStep.REAUTH) ReauthDialog(vm.reauthMessage, vm.lockoutMs, vm::reauthenticate, onDone)
     if (vm.step == ImportStep.CONFIRM) {
-        // BK-04 5 단계: 요약을 보여 주고 확인받는다
+        // BK-04 6 단계: 요약을 보여 주고 확인받는다
         AlertDialog(
             onDismissRequest = vm::cancelConfirm,
             title = { Text(stringResource(R.string.import_confirm_title)) },

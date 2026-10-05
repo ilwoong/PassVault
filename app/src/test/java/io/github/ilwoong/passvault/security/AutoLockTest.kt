@@ -159,4 +159,31 @@ class AutoLockPickerTest {
         autoLock.onBackground()
         assertEquals(1, locks)
     }
+
+    @Test
+    fun pickerResultCountsAsInteractionWhenTheReturnWasInTime() {
+        autoLock.onExternalPickerOpening()
+        autoLock.onBackground()
+        elapsed += 50_000 // 선택기에서 쓴 시간
+        autoLock.onForeground()
+        assertEquals("아직 유휴 시간 안이다", 0, locks)
+
+        autoLock.onExternalPickerResult()
+        elapsed += 50_000 // 돌아와서 비밀번호를 입력하기 전까지
+        autoLock.tick()
+        assertEquals("방금 선택기에서 골랐다 — 유휴는 거기서부터 센다", 0, locks)
+
+        autoLock.onBackground()
+        assertEquals("결과를 받았으니 백그라운드 즉시 잠금이 돌아온다", 1, locks)
+    }
+
+    @Test
+    fun pickerResultDoesNotUndoTheLockOnALateReturn() {
+        autoLock.onExternalPickerOpening()
+        autoLock.onBackground()
+        elapsed += 61_000
+        autoLock.onForeground() // ON_START 의 판정이 결과보다 먼저다
+        autoLock.onExternalPickerResult()
+        assertEquals(1, locks)
+    }
 }

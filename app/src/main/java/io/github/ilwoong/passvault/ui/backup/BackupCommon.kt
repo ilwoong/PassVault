@@ -19,6 +19,9 @@ import io.github.ilwoong.passvault.R
 import io.github.ilwoong.passvault.backup.BackupCodec
 import io.github.ilwoong.passvault.backup.BackupResult
 import io.github.ilwoong.passvault.ui.onboarding.MIN_MASTER_PASSWORD_LENGTH
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** BK-06: 사용자가 다음 행동을 정할 수 있을 만큼만 구분한다. */
 enum class BackupError { NOT_BACKUP, NEWER_VERSION, TOO_LARGE, WRONG_PASSWORD, MALFORMED, READ_FAILED, WRITE_FAILED }
@@ -100,6 +103,24 @@ object BackupFiles {
     /** BK-03: 실패하면 부분 기록된 파일을 지운다. */
     fun deleteQuietly(context: Context, uri: Uri) {
         runCatching { DocumentsContract.deleteDocument(context.contentResolver, uri) }
+    }
+
+    /**
+     * BK-03: 기록하지 않고 떠날 때, 선택기가 만들어 둔 빈 문서를 지운다. 비어 있지 않으면 사용자가 덮어쓰려고 고른
+     * 기존 파일이므로 건드리지 않는다. 크기를 알 수 없을 때도 지우지 않는다.
+     */
+    fun deleteIfEmpty(context: Context, uri: Uri) {
+        runCatching {
+            val size = context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { c ->
+                if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
+            }
+            if (size == 0L) DocumentsContract.deleteDocument(context.contentResolver, uri)
+        }
+    }
+
+    /** [deleteIfEmpty] 를 화면이 사라지는 중에 부른다. 화면의 코루틴은 이미 취소됐으므로 따로 돌린다. */
+    fun discardIfEmpty(context: Context, uri: Uri) {
+        CoroutineScope(Dispatchers.IO).launch { deleteIfEmpty(context, uri) }
     }
 
     fun displayName(context: Context, uri: Uri): String =

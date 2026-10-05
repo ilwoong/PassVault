@@ -12,7 +12,7 @@
 | SEC-02 | `security/Argon2KeyDeriver` — Argon2id, `calibrateKdf` 로 NFR-01 안에서 최대 파라미터 (CRY-02, CRY-09) | `Argon2KeyDeriverTest`, `KdfCalibrationTest`. 실기기(S23) 266~528ms. 저사양 기기는 미확인 — 아래 수기 표 |
 | SEC-03 | `AndroidManifest.xml` `allowBackup=false`, `res/xml/data_extraction_rules.xml` | TST-13 릴리스 머지 매니페스트 확인 (M9) |
 | SEC-04 | `backup/BackupCodec` — 백업 비밀번호 → Argon2id → AES-256-GCM, 헤더 AAD. 기기 키 미사용 (BK-02) | `BackupCodecTest`, `BackupIntegrationTest` (v1 고정 픽스처 포함), 에뮬레이터에서 만든 백업을 실기기에서 복구 |
-| SEC-05 | `security/AutoLock` (유휴·백그라운드·화면 꺼짐), `MainActivity`·`PassVaultApp` 연결 (LOCK-03). 전환 중의 백그라운드·화면 꺼짐은 `SessionManager` 가 전환 직후 적용한다. 잠기는 즉시 `ui/BranchStores` 가 금고 분기 ViewModel 을 비운다 (LOCK-04 4 단계) | `AutoLockTest`, `AutoLockPickerTest`, `SessionManagerTest`, `BranchStoresTest` (TST-08). 릴리스 빌드 E2E: 백그라운드 8초·20초 뒤 복귀(목록·상세·편집), 화면 꺼짐, 키보드 타이핑 중 유휴 잠금 미발동 |
+| SEC-05 | `security/AutoLock` (유휴·백그라운드·화면 꺼짐), `MainActivity`·`PassVaultApp` 연결 (LOCK-03). 전환 중의 백그라운드·화면 꺼짐은 `SessionManager` 가 전환 직후 적용한다. 잠기는 즉시 `ui/BranchStores` 가 금고 분기 ViewModel 을 비운다 (LOCK-04 4 단계). 백업 파일 선택기 동안에도 유휴 판정은 보류하지 않는다 — 잠기면 `ui/backup/BackupFilePicker` 가 고른 위치만 넘겨 해제 후 이어간다 | `AutoLockTest`, `AutoLockPickerTest`, `SessionManagerTest`, `BranchStoresTest` (TST-08), `BackupAcrossLockTest` (TST-09). 릴리스 빌드 E2E: 백그라운드 8초·20초 뒤 복귀(목록·상세·편집), 화면 꺼짐, 키보드 타이핑 중 유휴 잠금 미발동 |
 | SEC-06 | `MainActivity` — `FLAG_SECURE` (디버그 포함, 단일 Activity) | 코드 확인. 실기기에서 화면 캡처와 최근 앱 미리보기가 가려지는 것을 확인 |
 | SEC-07 | `ui/common/SecureClipboard` — `EXTRA_IS_SENSITIVE`, 자기 클립만 지움 (LOCK-07) | `SecureClipboardTest`, `ClipboardAndSettingsTest`. 실기기에서 자동 삭제 확인 |
 | SEC-08 | `AndroidManifest.xml` — `MainActivity` 만 exported, `ProfileInstallReceiver` 제거 | TST-13 (허용 예외 4건 외 없음, M9) |
@@ -47,6 +47,8 @@
 | 저사양 실기기 해제 1.5초 | **미확인** — S23 은 266~528ms (m=64 MiB, t=5~8) 로 충족하지만 저사양 기기가 아니다 |
 | 글꼴 200% / 다크 모드 | 통과 (주요 9개 화면 캡처 점검, M9) |
 | 비밀번호 변경 후 구 비밀번호 거부, 항목 유지 | 통과 (계측 TST-03, M6 E2E) |
+| 자동 잠금보다 오래 선택기에 머문 뒤 내보내기·가져오기 | 통과 (에뮬레이터, **디버그 빌드**, 실제 파일 선택기). 15초 설정: 돌아오는 순간 잠기고, 해제하면 재인증 대화상자가 뜬다. 기록·교체까지는 30초 설정에 35초 머물러 확인했다 — adb 로 넣는 글자는 대화상자에서 상호작용으로 세어지지 않는다 ([08 함정](08-testing.md#기기-테스트에서-겪은-함정)). 화면 키보드로는 15초 설정에서 재인증 대화상자에 5초 간격으로 43초 동안 입력해도 잠기지 않는다. 선택기가 떠 있는 동안 프로세스를 죽인 경우(`am kill`)도 내보내기가 끝난다. 릴리스 빌드·실기기에서는 하지 않았다 |
+| 내보내기 취소 시 빈 파일 삭제, 기존 파일 보존 | 통과 (에뮬레이터, 디버그 빌드). 새 위치를 고르고 재인증을 취소하면 0바이트 파일이 사라진다. 재인증 단계에서 유휴 잠금이 걸려도 사라진다. 기존 백업(163 B)을 덮어쓰기로 고르고 취소하면 그대로 남는다 |
 
 실기기에서 함께 확인한 것: 계측 테스트 전체(128개 중 실패 0, 건너뜀 2), 항목 1,000건에서 목록 21ms·검색 2ms·필터 8ms (NFR-02),
 백그라운드 잠금 뒤 복귀, 삼성 키보드로 타이핑하는 동안 유휴 잠금 미발동.

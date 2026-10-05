@@ -20,6 +20,7 @@ import io.github.ilwoong.passvault.security.Clocks
 import io.github.ilwoong.passvault.security.SessionManager
 import io.github.ilwoong.passvault.security.VaultKeyManager
 import io.github.ilwoong.passvault.security.VaultMetaStore
+import io.github.ilwoong.passvault.ui.backup.BackupFilePicker
 import io.github.ilwoong.passvault.ui.common.AndroidClipboardAccess
 import io.github.ilwoong.passvault.ui.common.SecureClipboard
 import kotlinx.coroutines.CoroutineScope
@@ -88,6 +89,11 @@ object AppModule {
         lockOnLeave = { session.lock(deferIfBusy = true) },
         clearClipboard = clipboard::clearIfOurs,
     )
+
+    /** LOCK-03 의 SAF 예외: 고른 위치가 잠금을 넘겨 남아야 하므로 프로세스에 하나다. */
+    @Provides
+    @Singleton
+    fun backupFilePicker(autoLock: AutoLock) = BackupFilePicker(autoLock)
 
     /** 해제 동안에만 주입할 수 있다. 금고 분기의 ViewModel 만 쓴다 (UX-00). */
     @Provides

@@ -17,6 +17,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.github.ilwoong.passvault.ui.PassVaultRoot
+import io.github.ilwoong.passvault.ui.backup.BackupFilePicker
 import io.github.ilwoong.passvault.ui.theme.PassVaultTheme
 import javax.inject.Inject
 
@@ -29,6 +30,9 @@ class MainActivity : FragmentActivity() {
 
     @Inject
     lateinit var autoLock: AutoLock
+
+    @Inject
+    lateinit var backupFilePicker: BackupFilePicker
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // LOCK-06: 스크린샷·화면 녹화·최근앱 미리보기 차단.
@@ -43,7 +47,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             PassVaultTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    PassVaultRoot(session, onTextInput = autoLock::onInteraction)
+                    PassVaultRoot(session, backupFilePicker, onTextInput = autoLock::onInteraction)
                 }
             }
         }

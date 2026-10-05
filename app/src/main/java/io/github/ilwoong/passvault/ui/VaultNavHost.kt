@@ -1,6 +1,7 @@
 package io.github.ilwoong.passvault.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavType
@@ -10,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.ilwoong.passvault.security.SessionManager
+import io.github.ilwoong.passvault.ui.backup.BackupFilePicker
 import io.github.ilwoong.passvault.ui.backup.ExportRoute
 import io.github.ilwoong.passvault.ui.backup.ImportRoute
 import io.github.ilwoong.passvault.ui.common.BiometricEnroller
@@ -25,7 +27,11 @@ import javax.inject.Inject
 
 /** 금고 분기의 시작 화면을 한 번만 정한다. */
 @HiltViewModel
-class VaultHostViewModel @Inject constructor(session: SessionManager, enroller: BiometricEnroller) : ViewModel() {
+class VaultHostViewModel @Inject constructor(
+    session: SessionManager,
+    enroller: BiometricEnroller,
+    backupFilePicker: BackupFilePicker,
+) : ViewModel() {
     private val justCreated = session.consumeJustCreated()
 
     /** UX-01 4·5 단계: 방금 금고를 만들었으면 생체(지원 기기만) → 백업 안내를 한 번 보여 준다. */
@@ -34,6 +40,16 @@ class VaultHostViewModel @Inject constructor(session: SessionManager, enroller: 
         enroller.isAvailable -> WELCOME
         else -> WELCOME_BACKUP
     }
+
+    /** LOCK-03: 백업 파일을 고르는 사이에 잠겼다가 해제됐다. 결과가 와 있으면 그 백업 화면에서 이어간다. */
+    private var resume: String? = when (backupFilePicker.picked.value?.purpose) {
+        BackupFilePicker.Purpose.EXPORT -> BACKUP_EXPORT
+        BackupFilePicker.Purpose.IMPORT -> BACKUP_IMPORT
+        null -> null
+    }
+
+    /** 한 번만 준다 — 화면 회전으로 다시 이동하지 않게 한다. */
+    fun consumeResume(): String? = resume.also { resume = null }
 }
 
 /**
@@ -102,6 +118,8 @@ fun VaultNavHost(host: VaultHostViewModel = hiltViewModel()) {
             ChangePasswordRoute(onDone = { nav.popBackStack() })
         }
     }
+    // 고르는 사이에 프로세스가 죽었다 살아났으면 백스택이 복원돼 그 백업 화면이 이미 맨 위에 있다. 겹쳐 띄우지 않는다
+    LaunchedEffect(Unit) { host.consumeResume()?.let { nav.navigate(it) { launchSingleTop = true } } }
 }
 
 private const val WELCOME = "welcome"
