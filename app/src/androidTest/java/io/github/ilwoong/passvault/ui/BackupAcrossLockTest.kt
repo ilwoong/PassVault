@@ -29,6 +29,7 @@ import io.github.ilwoong.passvault.ui.backup.ExportViewModel
 import io.github.ilwoong.passvault.ui.backup.ImportStep
 import io.github.ilwoong.passvault.ui.backup.ImportViewModel
 import io.github.ilwoong.passvault.ui.common.BiometricEnroller
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -142,8 +143,7 @@ class BackupAcrossLockTest {
 
         unlock()
         val host = onMain { VaultHostViewModel(session, BiometricEnroller(session, BiometricKeyStore(context)), picker) }
-        assertEquals("해제하면 내보내기 화면으로 간다", "backup/export", host.consumeResume())
-        assertNull("한 번만", host.consumeResume())
+        assertEquals("해제하면 내보내기 화면으로 간다", "backup/export", runBlocking { host.backupToResume.first() })
 
         val vm = exportVm()
         waitUntil("재인증부터 이어간다") { vm.step == ExportStep.REAUTH }
@@ -187,7 +187,7 @@ class BackupAcrossLockTest {
 
         unlock()
         val host = onMain { VaultHostViewModel(session, BiometricEnroller(session, BiometricKeyStore(context)), picker) }
-        assertEquals("backup/import", host.consumeResume())
+        assertEquals("backup/import", runBlocking { host.backupToResume.first() })
 
         val vm = importVm()
         waitUntil("고른 파일을 읽고 재인증부터 이어간다") { vm.step == ImportStep.REAUTH }

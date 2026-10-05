@@ -2,6 +2,7 @@ package io.github.ilwoong.passvault.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavType
@@ -23,7 +24,11 @@ import io.github.ilwoong.passvault.ui.onboarding.WelcomeBiometricRoute
 import io.github.ilwoong.passvault.ui.settings.AboutRoute
 import io.github.ilwoong.passvault.ui.settings.ChangePasswordRoute
 import io.github.ilwoong.passvault.ui.settings.SettingsRoute
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+import kotlin.random.Random
 
 /** 금고 분기의 시작 화면을 한 번만 정한다. */
 @HiltViewModel
@@ -41,16 +46,30 @@ class VaultHostViewModel @Inject constructor(
         else -> WELCOME_BACKUP
     }
 
-    /** LOCK-03: 백업 파일을 고르는 사이에 잠겼다가 해제됐다. 결과가 와 있으면 그 백업 화면에서 이어간다. */
-    private var resume: String? = when (backupFilePicker.picked.value?.purpose) {
-        BackupFilePicker.Purpose.EXPORT -> BACKUP_EXPORT
-        BackupFilePicker.Purpose.IMPORT -> BACKUP_IMPORT
-        null -> null
-    }
+    /**
+     * UX-00: 이 해제 구간의 표식. 금고 분기의 저장된 화면 상태는 표식이 같을 때만 복원된다 ([VaultSessionScope]).
+     * 이 ViewModel 은 화면 회전에는 살아남고, 잠기거나 프로세스가 끝나면 새로 만들어진다.
+     */
+    val sessionKey: Int = Random.nextInt()
 
-    /** 한 번만 준다 — 화면 회전으로 다시 이동하지 않게 한다. */
-    fun consumeResume(): String? = resume.also { resume = null }
+    /** LOCK-03: 백업 파일 선택기의 결과가 와 있는 동안, 그 결과를 이어받을 백업 화면. */
+    val backupToResume: Flow<String> = backupFilePicker.picked.filterNotNull().map {
+        when (it.purpose) {
+            BackupFilePicker.Purpose.EXPORT -> BACKUP_EXPORT
+            BackupFilePicker.Purpose.IMPORT -> BACKUP_IMPORT
+        }
+    }
 }
+
+/**
+ * UX-00: 잠긴 뒤의 해제는 항상 처음 화면에서 시작한다. 저장 상태(`rememberSaveable` — 백스택 포함)의 키에
+ * [sessionKey] 를 섞어, 다른 해제 구간에서 저장된 상태가 복원되지 않게 한다.
+ *
+ * 이것이 없으면 Activity 저장 번들에 남은 백스택이 되살아난다: 프로세스가 죽었다 살아났을 때, 그리고
+ * 백그라운드에서 잠긴 뒤 화면 회전 등으로 Activity 가 다시 만들어졌을 때. 같은 해제 구간의 화면 회전은 그대로 복원된다.
+ */
+@Composable
+internal fun VaultSessionScope(sessionKey: Int, content: @Composable () -> Unit) = key(sessionKey) { content() }
 
 /**
  * 금고 분기 (UX-00). Unlocked 일 때만 컴포지션에 있다.
@@ -58,7 +77,10 @@ class VaultHostViewModel @Inject constructor(
  * 경로 인자는 항목 id·타입뿐이며 비밀이 아니다 (UX-00b).
  */
 @Composable
-fun VaultNavHost(host: VaultHostViewModel = hiltViewModel()) {
+fun VaultNavHost(host: VaultHostViewModel = hiltViewModel()) = VaultSessionScope(host.sessionKey) { VaultNavGraph(host) }
+
+@Composable
+private fun VaultNavGraph(host: VaultHostViewModel) {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = host.start) {
         composable(WELCOME) {
@@ -118,8 +140,8 @@ fun VaultNavHost(host: VaultHostViewModel = hiltViewModel()) {
             ChangePasswordRoute(onDone = { nav.popBackStack() })
         }
     }
-    // 고르는 사이에 프로세스가 죽었다 살아났으면 백스택이 복원돼 그 백업 화면이 이미 맨 위에 있다. 겹쳐 띄우지 않는다
-    LaunchedEffect(Unit) { host.consumeResume()?.let { nav.navigate(it) { launchSingleTop = true } } }
+    // LOCK-03: 선택기의 결과가 왔는데 그 백업 화면이 맨 위가 아니면 띄운다 — 고르는 사이에 잠겼다가 해제된 경우다
+    LaunchedEffect(nav) { host.backupToResume.collect { if (nav.currentDestination?.route != it) nav.navigate(it) } }
 }
 
 private const val WELCOME = "welcome"
